@@ -13,6 +13,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 
 class Ui_Form(object):
     def setupUi(self, Form):
+
         Form.setObjectName("Form")
         Form.resize(446, 370)
         self.contenedortabla = QtWidgets.QWidget(Form)
