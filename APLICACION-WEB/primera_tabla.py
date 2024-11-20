@@ -16,80 +16,109 @@ from PyQt5.QtCore import Qt
 
 class Ui_Form(object):
     def setupUi(self, Form):
-
         Form.setObjectName("Form")
-        Form.resize(446, 370)
-        self.contenedortabla = QtWidgets.QWidget(Form)
-        self.contenedortabla.setGeometry(QtCore.QRect(30, 10, 381, 281))
-        self.contenedortabla.setObjectName("contenedortabla")
-        self.tabla = QtWidgets.QTableWidget(self.contenedortabla)
-        self.tabla.setGeometry(QtCore.QRect(10, 10, 351, 261))
-        self.tabla.setStyleSheet("QTableWidget::item {\n"
-"    border-bottom: 1px solid rgba(220, 220, 220);\n"
-"}\n"
-"QHeaderView::section {\n"
-"    border-bottom: 1px solid rgba(220, 220, 220);\n"
-"}\n"
-"\n"
-"")
-        self.tabla.setEditTriggers(QtWidgets.QAbstractItemView.DoubleClicked)
-        self.tabla.setSelectionMode(QtWidgets.QAbstractItemView.MultiSelection)
-        self.tabla.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        self.tabla.setIconSize(QtCore.QSize(62, 70))
-        self.tabla.setShowGrid(False)
-        self.tabla.setWordWrap(True)
-        self.tabla.setObjectName("tabla")
-        self.tabla.setColumnCount(4)
-        self.tabla.setRowCount(5)
-        item = QtWidgets.QTableWidgetItem()
-        self.tabla.setVerticalHeaderItem(0, item)
-        item = QtWidgets.QTableWidgetItem()
-        self.tabla.setVerticalHeaderItem(1, item)
-        item = QtWidgets.QTableWidgetItem()
-        self.tabla.setVerticalHeaderItem(2, item)
-        item = QtWidgets.QTableWidgetItem()
-        self.tabla.setVerticalHeaderItem(3, item)
-        item = QtWidgets.QTableWidgetItem()
-        self.tabla.setVerticalHeaderItem(4, item)
-        item = QtWidgets.QTableWidgetItem()
-        self.tabla.setHorizontalHeaderItem(0, item)
-        item = QtWidgets.QTableWidgetItem()
-        self.tabla.setHorizontalHeaderItem(1, item)
-        item = QtWidgets.QTableWidgetItem()
-        self.tabla.setHorizontalHeaderItem(2, item)
-        item = QtWidgets.QTableWidgetItem()
-        self.tabla.setHorizontalHeaderItem(3, item)
-        item = QtWidgets.QTableWidgetItem()
-        item.setCheckState(QtCore.Qt.Unchecked)
-        self.tabla.setItem(0, 0, item)
-        item = QtWidgets.QTableWidgetItem()
-        item.setFlags(QtCore.Qt.ItemIsSelectable|QtCore.Qt.ItemIsEditable|QtCore.Qt.ItemIsDragEnabled|QtCore.Qt.ItemIsUserCheckable|QtCore.Qt.ItemIsEnabled)
-        self.tabla.setItem(0, 1, item)
-        item = QtWidgets.QTableWidgetItem()
-        item.setFlags(QtCore.Qt.ItemIsSelectable|QtCore.Qt.ItemIsEditable|QtCore.Qt.ItemIsDragEnabled|QtCore.Qt.ItemIsUserCheckable|QtCore.Qt.ItemIsEnabled)
-        self.tabla.setItem(0, 2, item)
-        item = QtWidgets.QTableWidgetItem()
-        item.setFlags(QtCore.Qt.ItemIsSelectable|QtCore.Qt.ItemIsEditable|QtCore.Qt.ItemIsDragEnabled|QtCore.Qt.ItemIsUserCheckable|QtCore.Qt.ItemIsEnabled)
-        self.tabla.setItem(0, 3, item)
-        self.tabla.horizontalHeader().setCascadingSectionResizes(False)
-        self.tabla.horizontalHeader().setDefaultSectionSize(70)
-        self.tabla.horizontalHeader().setHighlightSections(False)
-        self.tabla.horizontalHeader().setMinimumSectionSize(25)
-        self.tabla.horizontalHeader().setStretchLastSection(False)
-        self.tabla.verticalHeader().setVisible(False)
-        self.tabla.verticalHeader().setDefaultSectionSize(20)
-        self.tabla.verticalHeader().setHighlightSections(False)
-        self.tabla.verticalHeader().setSortIndicatorShown(False)
-        self.scrolltabla = QtWidgets.QScrollBar(self.contenedortabla)
-        self.scrolltabla.setGeometry(QtCore.QRect(360, 30, 20, 241))
-        self.scrolltabla.setOrientation(QtCore.Qt.Vertical)
-        self.scrolltabla.setObjectName("scrolltabla")
-        self.aggfila = QtWidgets.QPushButton(Form)
-        self.aggfila.setGeometry(QtCore.QRect(270, 310, 56, 17))
-        self.aggfila.setObjectName("aggfila")
+        Form.resize(1366, 768)  # Resolución estándar de una laptop (puedes ajustar según sea necesario)
 
-        self.retranslateUi(Form)
-        QtCore.QMetaObject.connectSlotsByName(Form)
+        # Espacio reservado para la barra lateral (20% del ancho total)
+        barra_lateral_ancho = int(Form.width() * 0.2)
+        barra_lateral_alto = Form.height() - 40  # Altura total, menos márgenes
+
+        # Configuración del contenedor de la barra lateral
+        self.barra_lateral = QtWidgets.QWidget(Form)
+        self.barra_lateral.setGeometry(
+            QtCore.QRect(20, 20, barra_lateral_ancho, barra_lateral_alto)
+        )
+        self.barra_lateral.setObjectName("barra_lateral")
+        self.barra_lateral.setStyleSheet("background-color: #f0f0f0; border-radius: 5px;")
+
+        # Botón para agregar filas
+        self.aggfila = QtWidgets.QPushButton(self.barra_lateral)
+        self.aggfila.setGeometry(
+            QtCore.QRect(
+                int(barra_lateral_ancho * 0.2),  # Centrado horizontalmente (20% del ancho total como margen)
+                50,  # Posición vertical inicial (puedes ajustar según quieras)
+                int(barra_lateral_ancho * 0.6),  # Ancho del botón (60% del ancho de la barra lateral)
+                40,  # Altura del botón
+            )
+        )
+        self.aggfila.setObjectName("agregar_fila")
+        self.aggfila.setText("Agregar Fila")
+        self.aggfila.setStyleSheet("""
+            QPushButton {
+                font-size: 14px;
+                background-color: #4caf50;
+                color: white;
+                border-radius: 5px;
+                padding: 5px;
+            }
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+        """)
+
+        # Configuración del contenedor para la tabla
+        tabla_ancho = Form.width() - barra_lateral_ancho - 40  # Ajustando espacio total menos márgenes
+        tabla_alto = Form.height() - 40  # Ajustando espacio vertical menos márgenes
+
+        self.contenedortabla = QtWidgets.QWidget(Form)
+        self.contenedortabla.setGeometry(
+            QtCore.QRect(barra_lateral_ancho + 40, 20, tabla_ancho, tabla_alto)
+        )
+        self.contenedortabla.setObjectName("contenedortabla")
+
+        # Configuración de la tabla
+        self.tabla = QtWidgets.QTableWidget(self.contenedortabla)
+        self.tabla.setGeometry(QtCore.QRect(0, 0, tabla_ancho, tabla_alto))
+        self.tabla.setObjectName("tabla")
+        self.tabla.setColumnCount(8)  # Configura el número de columnas
+        self.tabla.setRowCount(20)  # Número inicial de filas
+        self.tabla.setShowGrid(False)  # Sin grid para estilo limpio
+        self.tabla.setAlternatingRowColors(True)  # Colores alternos en las filas
+
+        # Estilo general
+        self.tabla.setStyleSheet("""
+            QTableWidget {
+                font-size: 14px;
+                border: none;
+            }
+            QTableWidget::item {
+                border-bottom: 1px solid rgba(200, 200, 200, 0.7);
+            }
+            QHeaderView::section {
+                background-color: #f4f4f4;
+                border: 1px solid #dcdcdc;
+                font-weight: bold;
+                padding: 6px;
+            }
+        """)
+
+        # Encabezados horizontales
+        encabezados = ["ID", "SHIPIFY", "DATE", "STATUS", "CUSTOMER", "EMAIL", "COUNTRY", "ORDER TYPE"]
+        self.tabla.setHorizontalHeaderLabels(encabezados)
+        self.tabla.horizontalHeader().setStretchLastSection(True)
+        self.tabla.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+
+        # Oculta el encabezado vertical
+        self.tabla.verticalHeader().setVisible(False)
+
+        # Ajusta el tamaño predeterminado de las filas
+        self.tabla.verticalHeader().setDefaultSectionSize(40)
+
+        # Configuración de selección
+        self.tabla.setSelectionBehavior(QtWidgets.QTableWidget.SelectRows)
+        self.tabla.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+
+        # Añadir barra de desplazamiento
+        self.tabla.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        self.tabla.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+    
+        # Agregar algunos datos de ejemplo
+        for row in range(20):
+            for col in range(8):
+                item = QtWidgets.QTableWidgetItem(f"Data {row+1},{col+1}")
+                item.setTextAlignment(QtCore.Qt.AlignCenter)
+                self.tabla.setItem(row, col, item)
+        
 
     def retranslateUi(self, Form):
         _translate = QtCore.QCoreApplication.translate

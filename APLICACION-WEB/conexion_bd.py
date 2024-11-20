@@ -11,7 +11,7 @@ class base_ddatos():
     def __init__(self):
 
         #objeto de tipo conexion que guarda metodos: cursor, commit, rollback, close
-        self.conn = psycopg2.connect(host="localhost", database="PETROJUNIN_DATA", user="postgres", password="Junindata" )
+        self.conn = psycopg2.connect(host="localhost", database="juninpruebas", user="postgres", password="Junindata" )
 
     def insertar(self,producto,nuevaf,esquema,tabla):
         cursor=self.conn.cursor()
