@@ -1,14 +1,14 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QTableWidget, QTableWidgetItem
-from primera_tabla import Ui_Form
-from conexion_bd import base_ddatos
+from ui.qtfuncional import ExtendedUiForm
+from bd.conexion_bd import base_ddatos
 #esquema= "public" o "public2" | tabla= "produccion_c"
 
 class MainApp(QWidget):
 
     def __init__(self, producto, esquema,tabla):
         super().__init__()
-        self.ui = Ui_Form()
+        self.ui = ExtendedUiForm(self)
         self.ui.setupUi(self)
     
         # Crear una instancia de la clase de conexión a la base de datos
