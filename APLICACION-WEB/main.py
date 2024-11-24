@@ -50,7 +50,7 @@ class MainApp(QWidget):
         self.ui.columnaedicion(self.accionmodoedicion,"recursos\botonedicion.png",producto,esquema,tabla)
         self.ui.columnaedicion(self.accioneditar,"recursos\botonguardado.png", producto,esquema,tabla)
         self.ui.columnaedicion(self.accionnoeditar,"recursos\botonnoguardado.png", producto,esquema,tabla)
-        self.ui.tabla.setColumnHidden(self.ui.tabla.columnCount()-2, True) #MOSTRAR ICONO GUARDAR
+        self.ui.tabla.setColumnHidden(self.ui.tabla.columnCount()-2, True) 
         self.ui.tabla.setColumnHidden(self.ui.tabla.columnCount()-1, True)
         cursor.close()
 
@@ -58,19 +58,24 @@ class MainApp(QWidget):
         #falta modulo de validacion
         #extrayendo datos de la fila editada
         nuevaf = []
-        for col in range(self.tabla.columnCount()):
-            item = self.tabla.item(ifila, col)
-            nuevaf.append(item.text())  # Guardar el texto de la celda
+        for col in range(self.ui.tabla.columnCount()):
+            item = self.ui.tabla.item(ifila, col)
+
+            if item:  # Si la celda no está vacía
+                nuevaf.append(item.text())
+            else:
+                nuevaf.append("")  # Asegurar que no se rompa si la celda está vacía
 
         print(f"Fila seleccionada:{nuevaf}")  # Mostrar la fila en la consola (opcional)
-
-        if None == self.posicionfila():
+        
+        id=self.posicionfila()
+        if None == id:
             self.conectarbd.insertar(producto,nuevaf,esquema,tabla)
         else:
-            self.conectarbd.editar(producto,nuevaf,esquema,tabla)
+            self.conectarbd.editar(id,producto,nuevaf,esquema,tabla)
 
     def agregar_fila(self):
-
+        #malo porque no agrega la columna de boton
         # Obtiene el número de filas actuales y añade una nueva al final
         nfilas = self.ui.tabla.rowCount()
         self.ui.tabla.insertRow(nfilas)
@@ -79,14 +84,17 @@ class MainApp(QWidget):
         for col in range(self.ui.tabla.columnCount()):
             item = QTableWidgetItem("")  # Crea un item vacío
             self.ui.tabla.setItem(nfilas, col, item)  # Añade el item vacío a la nueva fila
-        
+        self.ui.tabla.scrollToBottom()
+
+
     def posicionfila(self):
+        #error: item_id = self.item(filaseleccionada, 1) AttributeError: 'MainApp' object has no attribute 'item'
         # Obtener el índice de la fila seleccionada
         filaseleccionada = self.ui.tabla.currentRow()
 
         if filaseleccionada != -1:  # Verifica que haya una fila seleccionada
             #item(variable,posicion fila)
-            item_id = self.item(filaseleccionada, 1)  # Columna 1 contiene el 'id'
+            item_id = self.ui.tabla.item(filaseleccionada, 0)  # Columna 0 contiene el 'id'
             if item_id:  # Verifica que el item no sea None
                 return int(item_id.text())  # Devuelve el id como entero
         return None  # Si no hay fila seleccionada, devuelve None
@@ -94,7 +102,7 @@ class MainApp(QWidget):
     def accioneditar(self,ifila, producto,esquema,tabla):
         #selecciona la fila al presionar el boton
         self.ui.tabla.selectRow(ifila)
-        self.agregareditar(producto,esquema,tabla)
+        self.agregareditar(ifila,producto,esquema,tabla)
         #falta notificacion validacion de datos
         self.ui.tabla.setColumnHidden(self.ui.tabla.columnCount()-2, True)
         self.ui.tabla.setColumnHidden(self.ui.tabla.columnCount()-1, True)
@@ -114,12 +122,21 @@ class MainApp(QWidget):
     def accionmodoedicion(self,ifila,producto,esquema,tabla):
         self.ui.tabla.selectRow(ifila)
         nuevaf = []
-        for col in range(self.tabla.columnCount()):
-            item = self.tabla.item(ifila, col)
-            nuevaf.append(item.text())  # Guardar el texto antes de editar
+        for col in range(self.ui.tabla.columnCount()):
+    
+            # Verifica si la celda tiene un QTableWidgetItem
+            item = self.ui.tabla.item(ifila, col)
+            if item is None:
+                # Si no existe, crea un QTableWidgetItem vacío
+                item = QTableWidgetItem("")
+                self.ui.tabla.setItem(ifila, col, item)
+
+            # Guardar el texto del QTableWidgetItem en la lista
+            nuevaf.append(item.text())
+
         self.ui.tabla.setColumnHidden(self.ui.tabla.columnCount()-3, True) #OCULTAR ICONO EDITAR 
         self.ui.tabla.setColumnHidden(self.ui.tabla.columnCount()-2, False) #MOSTRAR ICONO GUARDAR
-        self.ui.tabla.setColumnHidden(self.ui.tabla.columnCount()-1, True) #MOSTRAR ICONO DESHACER
+        self.ui.tabla.setColumnHidden(self.ui.tabla.columnCount()-1, False) #MOSTRAR ICONO DESHACER
 
         return nuevaf
     

@@ -15,6 +15,8 @@ class base_ddatos():
 
     def insertar(self,producto,nuevaf,esquema,tabla):
         cursor=self.conn.cursor()
+        print(nuevaf)
+        
         self.conversionformatotabla(cursor, nuevaf,esquema,tabla)
     
         #extrayendo headers en una cadena
@@ -35,17 +37,18 @@ class base_ddatos():
 
         #usada para editar e insertar informacion de 0 (puede ser la misma funcion)
         
-    def eliminar(self,esquema,tabla):
+    def eliminar(self,id,esquema,tabla):
         cursor=self.conn.cursor()
-        id=self.buscar
+        id=self.buscar(cursor,id,esquema,tabla)
         if id != -1:
             cursor.execute(f"DELETE * FROM {esquema}.{tabla} WHERE id_{tabla} = {id}")
         self.conn.commit()
         cursor.close()
         
-    def editar (self,producto,nuevaf,esquema,tabla):
+    def editar (self,id,producto,nuevaf,esquema,tabla):
         #sirve recibiendo de nuevo toda la fila completa y cambiando todos los campos
         #-incluso los no editados
+        #buena
         cursor=self.conn.cursor()
         self.conversionformatotabla(cursor, nuevaf,esquema,tabla)
 
@@ -54,16 +57,24 @@ class base_ddatos():
         #extrayendo header en una cadena
         headers=self.header(cursor,nombres,esquema,tabla)
         #extrayendo datos en una cadena
+        # Construir la cadena de datos para el UPDATE
         datos=""
-        i=0
+        print(f"Headers:{nombres}, tamano: {len(nombres)}")
+        i=2
         for col in nuevaf:
-            if "id" not in col:
-                datos=datos+nombres[i]+'= "'+col+'", '
+            
+            if "id" not in nombres[i]:
+                datos=datos+nombres[i]+'= '+str(col)+', '
+            
+            if i==len(nombres)-1:
+                break
             i=i+1
         if datos.endswith(", "):
             datos = datos[:-2]
-
-        cursor.execute(f"UPDATE {esquema}.{tabla} SET {datos} WHERE id_{tabla} = {id}")
+        print(datos)
+        if self.buscar(cursor,id,esquema,tabla):
+            print(f"UPDATE {esquema}.{tabla} SET {datos} WHERE id_{tabla} = {id}")
+            cursor.execute(f"UPDATE {esquema}.{tabla} SET {datos} WHERE id_{tabla} = {id}")
         self.conn.commit()
         cursor.close()
 
@@ -76,19 +87,22 @@ class base_ddatos():
             return id
         
     def conversionformatotabla(self, cursor, nuevaf, esquema, tabla):
-        cursor.execute(f"SELECT data_type FROM information_schema.columns WHERE table_schema = '{esquema}' AND table_name = '{tabla}' AND column_name NOT LIKE 'id%'")
+        cursor.execute(f"SELECT data_type FROM information_schema.columns WHERE table_schema = '{esquema}' AND table_name = '{tabla}'")
         bdtype= cursor.fetchall()
+        print(f"Fila seleccionada:{nuevaf}")
+        print(f"bdtype:{bdtype}")
+        for i in range (len(nuevaf)-3):
+            tipo_dato = bdtype[i][0]  # Extrae el tipo de dato desde la tupla
 
-        for i in range (len(nuevaf)):
-            if bdtype(i)=='date':
+            if tipo_dato == 'date':  # Si el tipo es 'date'
                 nuevaf[i] = datetime.strptime(nuevaf[i], "%Y-%m-%d").date()  # Convierte a datetime.date
-            elif bdtype(i)=='bigint':
-                nuevaf[i]=int(nuevaf[i])
-            elif bdtype(i)=='numeric':
-                nuevaf[i]=Decimal(nuevaf[i])
+            elif tipo_dato == 'bigint':  # Si el tipo es 'bigint'
+                nuevaf[i] = int(nuevaf[i])
+            elif tipo_dato == 'numeric':  # Si el tipo es 'numeric'
+                nuevaf[i] = Decimal(nuevaf[i])
 
         #nocierracursor
-        #v vector a insertar
+        #nuevaf vector a insertar
         #bdtype tupla con tipos de datos       
 
     def header(self,cursor,nombres,esquema,tabla):

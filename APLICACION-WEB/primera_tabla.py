@@ -167,7 +167,7 @@ class Ui_Form(object):
             boton = QPushButton("Accionar")
             boton.setIcon(QIcon(ruta))  # Cambia la ruta por tu imagen
             boton.setIconSize(QSize(32, 32))  # Tamaño del ícono
-            boton.clicked.connect(lambda _, ifila=fila: accion(ifila,producto,esquema,tabla))  # Conectar a función con índice de fila
+            boton.clicked.connect(self.crear_accion(accion, fila, producto, esquema, tabla)) # Conectar a función con índice de fila
 
             # Agregar botón a la celda
             widget_boton = QWidget()
@@ -178,7 +178,13 @@ class Ui_Form(object):
             widget_boton.setLayout(layout_boton)
 
             self.tabla.setCellWidget(fila, num_columnas, widget_boton)
-            
+        
+    def crear_accion(self, accion, fila, producto, esquema, tabla):
+        def accion_fila():
+            accion(fila, producto, esquema, tabla)
+        return accion_fila
+
+
 if __name__ == "__main__":
     import sys
     app = QtWidgets.QApplication(sys.argv)
