@@ -45,38 +45,34 @@ class base_ddatos():
         self.conn.commit()
         cursor.close()
         
-    def editar (self,id,producto,nuevaf,esquema,tabla):
-        #sirve recibiendo de nuevo toda la fila completa y cambiando todos los campos
-        #-incluso los no editados
-        #buena
-        cursor=self.conn.cursor()
-        self.conversionformatotabla(cursor, nuevaf,esquema,tabla)
+    def editar(self, id, producto, nuevaf, esquema, tabla):
+    
+        #Edita una fila en la base de datos actualizando todos los campos de la tabla, incluso los no editados.
 
-        #header en vector
-        nombres=[]
-        #extrayendo header en una cadena
-        headers=self.header(cursor,nombres,esquema,tabla)
-        #extrayendo datos en una cadena
-        # Construir la cadena de datos para el UPDATE
-        datos=""
-        print(f"Headers:{nombres}, tamano: {len(nombres)}")
-        i=2
-        for col in nuevaf:
-            
-            if "id" not in nombres[i]:
-                datos=datos+nombres[i]+'= '+str(col)+', '
-            
-            if i==len(nombres)-1:
-                break
-            i=i+1
-        if datos.endswith(", "):
-            datos = datos[:-2]
-        print(datos)
-        if self.buscar(cursor,id,esquema,tabla):
-            print(f"UPDATE {esquema}.{tabla} SET {datos} WHERE id_{tabla} = {id}")
-            cursor.execute(f"UPDATE {esquema}.{tabla} SET {datos} WHERE id_{tabla} = {id}")
+        cursor = self.conn.cursor()
+    
+        # Asegurarse de que los datos estén en el formato adecuado para la tabla
+        self.conversionformatotabla(cursor, nuevaf, esquema, tabla)
+
+        # Extraer los nombres de las columnas (header)
+        nombres = []
+        self.header(cursor, nombres, esquema, tabla)  # nombres contendrá los encabezados de la tabla
+
+        # Generar la cadena dinámica para el SET usando comprensión de listas y `join`
+        campos_set = ", ".join([f"{col} = %s" for col in nombres])
+
+        # Verificar si el registro con `id` existe en la tabla
+        if self.buscar(cursor, id, esquema, tabla):
+            # Construir y ejecutar la consulta dinámica
+            query = f"UPDATE {esquema}.{tabla} SET {campos_set} WHERE id_{tabla} = %s"
+            print(f"Ejecutando consulta: {query}")
+            # Ejecutar la consulta con parámetros seguros
+            cursor.execute(query, nuevaf + [id])
+
+        # Guardar los cambios en la base de datos
         self.conn.commit()
         cursor.close()
+
 
     def buscar(self,cursor,id,esquema,tabla):
         cursor.execute(f"SELECT * FROM {esquema}.{tabla} WHERE id_{tabla} = {id}")
@@ -87,19 +83,24 @@ class base_ddatos():
             return id
         
     def conversionformatotabla(self, cursor, nuevaf, esquema, tabla):
-        cursor.execute(f"SELECT data_type FROM information_schema.columns WHERE table_schema = '{esquema}' AND table_name = '{tabla}'")
-        bdtype= cursor.fetchall()
-        print(f"Fila seleccionada:{nuevaf}")
-        print(f"bdtype:{bdtype}")
-        for i in range (len(nuevaf)-3):
-            tipo_dato = bdtype[i][0]  # Extrae el tipo de dato desde la tupla
-
-            if tipo_dato == 'date':  # Si el tipo es 'date'
-                nuevaf[i] = datetime.strptime(nuevaf[i], "%Y-%m-%d").date()  # Convierte a datetime.date
-            elif tipo_dato == 'bigint':  # Si el tipo es 'bigint'
-                nuevaf[i] = int(nuevaf[i])
-            elif tipo_dato == 'numeric':  # Si el tipo es 'numeric'
-                nuevaf[i] = Decimal(nuevaf[i])
+        cursor.execute(f"SELECT data_type FROM information_schema.columns WHERE table_schema = '{esquema}' AND table_name = '{tabla}' AND column_name NOT LIKE 'id%'")
+        bdtype = cursor.fetchall()
+        print(f"Fila seleccionada: {nuevaf}")
+        print(f"bdtype: {bdtype}")
+    
+        j = 0
+        for i in range(len(nuevaf)):
+            tipo_dato = bdtype[j][0]  # Extrae el tipo de dato desde la tupla
+            print(f"Tipo de dato de columna {i} en {j}: {tipo_dato}")
+            if i == j:
+                if tipo_dato == 'date':  # Si el tipo es 'date'
+                    if isinstance(nuevaf[i], str):  # Convierte solo si es cadena
+                        nuevaf[i] = datetime.strptime(nuevaf[i], "%Y-%m-%d").date()
+                elif tipo_dato == 'bigint':  # Si el tipo es 'bigint'
+                    nuevaf[i] = int(nuevaf[i]) if not isinstance(nuevaf[i], int) else nuevaf[i]
+                elif tipo_dato == 'numeric':  # Si el tipo es 'numeric'
+                    nuevaf[i] = Decimal(nuevaf[i]) if not isinstance(nuevaf[i], Decimal) else nuevaf[i]
+            j += 1
 
         #nocierracursor
         #nuevaf vector a insertar
@@ -117,7 +118,7 @@ class base_ddatos():
         for col in nombres:
             cadenanombres=cadenanombres+col+", "
 
-        return cadenanombres
+        return cadenanombres[:-2]
     
         #nocierra cursor
         #modifica vector nombres
