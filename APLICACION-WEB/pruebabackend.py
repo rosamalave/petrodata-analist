@@ -4,20 +4,27 @@ from datetime import datetime
 from decimal import Decimal
 import os
 
+#funciona todo pero trabaja con los indices de la lista generada desde la base de datos en si
+#cambiar enfoque para que trabaje directamente con los id de la base de datos ya que no siempre los id
+#van a representar continuidad para representar los indices del 0 al 1 
+#averiguar: es posible que la base de datos te de el indice superficial numeral de continuidad?
+#averiguar: es posible programar un script que cada vez que se elimine una fila se reinicie
+#el conteo para mantener continuidad
+
 def limpiar_consola():
     """
     Limpia la consola de manera universal (funciona en Windows y Unix).
     """
     os.system('cls' if os.name == 'nt' else 'clear')
 
-
 class ConsolaDB:
+    
     def __init__(self, conexion_bd, esquema, tabla):
         self.conexion = conexion_bd
         self.esquema = esquema
         self.tabla = tabla
-        self.datos = [] #sin id
-        self.datosall = [] #con id
+        self.datos = []  # Sin ID
+        self.datosall = []  # Con ID
         self.headers = []
         self.cargar_datos()
         
@@ -35,108 +42,108 @@ class ConsolaDB:
         
     def menu_principal(self):
         while True:
-            self.mostrar_tabla()
-            opcion = input("\n1) Editar fila\n2) Agregar fila\n3) Salir\nSeleccione una opción: ")
+            self.vistageneral()
+            opcion = input("\n1) Agregar fila\n2) Editar fila\n3) Eliminar fila\n4) Salir\nSeleccione una opción: ")
+
             if opcion == "1":
-                self.activar_editar()
-            elif opcion == "2":
+                # Agregar una nueva fila
                 self.agregar_fila()
-            elif opcion == "3":
+                print("\nFila vacía agregada. Ahora puede editarla seleccionando la opción 2.")
+
+            elif opcion == "2":
+                try:
+                    # Solicitar el índice de la fila a editar
+                    indice = input("\nIngrese el índice de la fila que desea editar: ").strip()
+                    if not indice.isdigit():
+                        raise ValueError("El índice debe ser un número entero.")
+                    indice = int(indice)
+
+                    # Determinar si se trata de inserción o edición
+                    fila = list(self.datos[indice])
+                    if all(celda is None for celda in fila):
+                        operacion = self.insertarfila
+                    else:
+                        operacion = self.editarfila
+
+                    # Gestionar la fila según la operación
+                    self.agregardatos(operacion, indice)
+
+                except (ValueError, IndexError) as e:
+                    print(f"Error: {e}")
+            elif opcion=="3":
+                # eliminar una fila
+                self.eliminarfila()
+                print("\nFila eliminada con exito.")
+            elif opcion == "4":
+                print("Saliendo del programa.")
                 break
+            
             else:
                 print("Opción inválida. Intente de nuevo.")
 
-    def mostrar_tabla(self):
-        tabla = PrettyTable()
-        tabla.field_names = ["Índice"] + self.headers  # Agregamos el encabezado del índice
-    
-        # Preparamos todas las filas con su índice
-        filas_con_indices = [[i] + list(fila) for i, fila in enumerate(self.datos)]
-    
-        # Agregamos todas las filas a la tabla
-        for fila in filas_con_indices:
-            tabla.add_row(fila)
-    
-        print(tabla)
+    def agregardatos(self, operacion, indice):
+        """
+        Gestionar la edición o inserción de una fila.    
+        :param operacion: Función a ejecutar (self.insertarfila o self.editarfila).
+        :param indice: Índice de la fila a editar o insertar.
+        """
+        fila = list(self.datos[indice])
 
-    def activar_editar(self):
-        self.mostrar_tabla()
-        try:
-            indice = int(input("\nIngrese el índice de la fila que desea editar: ")) 
-            if indice < 0 or indice >= len(self.datos):
-                raise ValueError("Índice fuera de rango.")
-        except ValueError as e:
-            print(e)
-            return
-
-        fila_original = list(self.datos[indice])
-        print(f"fila original: {fila_original}")
-
-        self.mostrar_fila_editando(self.headers, fila_original, indice)
+        self.vistaedicion(self.headers, fila, indice)
 
         while True:
-            celda = input("\n¿Qué celda desea editar? (introduzca índice o 'x' para salir): ")
+            celda = input("\n¿Qué celda desea editar? (introduzca índice o 'x' para finalizar): ")
             if celda.lower() == "x":
-                print("\nEdición finalizada.")
+                print("\nOperación finalizada.")
                 break
             try:
                 columna = int(celda)
                 if columna < 0 or columna >= len(self.headers):
                     raise ValueError("Columna fuera de rango.")
-                
-                nuevo_valor = input(f"Ingrese el nuevo valor para '{self.headers[columna]}': ")
-                
-                # Validar el valor directamente (incluye obtener tipo de dato y validación)
-                self.validar(nuevo_valor, self.esquema, self.tabla, self.headers[columna])
 
-                fila_original[columna] = nuevo_valor
-                self.mostrar_fila_editando(self.headers, fila_original, indice)
+                nuevo_valor = input(f"Ingrese el nuevo valor para '{self.headers[columna]}': ")
+
+                # Validar el valor antes de asignarlo
+                self.validar(nuevo_valor, self.esquema, self.tabla, self.headers[columna])
+                fila[columna] = nuevo_valor
+                self.vistaedicion(self.headers, fila, indice)
             except ValueError as e:
                 print(f"Error: {e}")
                 continue
-        print(f"fila editada: {fila_original}")
-        # Usamos `conversionformatotabla` antes de guardar cambios
-        cursor = self.conexion.conn.cursor()
-        self.conexion.conversionformatotabla(cursor, fila_original, self.esquema, self.tabla)
-        print(f"fila editada y convertida: {fila_original}")
-        cursor.close()
-        self.guardar_cambios(indice, fila_original)
 
-    def mostrar_fila_editando(self, headers, fila_original, indice_fila):
-        subindices = [str(i) for i in range(len(headers))]
-        tabla = PrettyTable()
-        tabla.add_row(subindices)
-        tabla.add_row(headers)
-        tabla.add_row(fila_original)
-
-        print("\n--- Editando Fila ---")
-        print(f"Índice de la fila: {indice_fila}")
-        print(tabla)
-
-    def guardar_cambios(self, indice, fila_editada):
-        id_fila=self.datosall[indice][0] #consultando el id en la tabla con columnas id 
-        self.conexion.editar(id_fila, None, fila_editada, self.esquema, self.tabla)
-        print("\nCambios guardados exitosamente.")
+        # Llamar a la operación final (insertar o editar)
+        operacion(indice, fila)
         self.cargar_datos()
 
+
+    def editarfila(self, indice, fila_editada):
+        indice=self.datosall[indice][0]
+        self.conexion.editar(indice, None, fila_editada, self.esquema, self.tabla)
+        print("\nFila editada correctamente.")
+
+
+    def insertarfila(self, _, nueva_fila):
+        self.conexion.insertar(None, nueva_fila, self.esquema, self.tabla)
+        print("\nNueva fila insertada correctamente.")
+    
+    def eliminarfila(self):
+        try:
+            # Solicitar el índice de la fila a editar
+            indice = input("\nIngrese el índice de la fila que desea editar: ").strip()
+            if not indice.isdigit():
+                raise ValueError("El índice debe ser un número entero.")
+        except (ValueError, IndexError) as e:
+            print(f"Error: {e}")
+        indice = int(indice)
+        indice=self.datosall[indice][0]
+        self.conexion.eliminar(indice, self.esquema, self.tabla)
+        self.cargar_datos()
+        
     def agregar_fila(self):
         nueva_fila = [None] * len(self.headers)
         self.datos.append(nueva_fila)
         print("\nFila vacía agregada. Ahora puede editarla.")
-        self.activar_editar()
-        self.datos.pop()  # Retira fila vacía si no se guarda
 
-    def insertar_fila(self, nueva_fila):
-        # Validar cada valor de la nueva fila antes de insertarlo
-        for i, valor in enumerate(nueva_fila):
-            self.validar(valor, self.esquema, self.tabla, self.headers[i])
-        
-        cursor = self.conexion.conn.cursor()
-        self.conexion.conversionformatotabla(cursor, nueva_fila, self.esquema, self.tabla)
-        cursor.close()
-        self.conexion.insertar(None, nueva_fila, self.esquema, self.tabla)
-        print("\nNueva fila insertada exitosamente.")
-        self.cargar_datos()
 
     def validar(self, valor, esquema, tabla, columna, permite_nulo=False):
         """
@@ -175,7 +182,6 @@ class ConsolaDB:
         # Validar tipo de dato esperado
         if tipo_esperado in ('int', 'bigint', 'numeric'):
             try:
-                # Convertir a float para validar que es un número
                 numero = float(valor)
                 if numero < 0:
                     raise ValueError(f"El valor '{valor}' no puede ser negativo.")
@@ -185,17 +191,43 @@ class ConsolaDB:
 
         elif tipo_esperado == 'date':
             try:
-                # Validar fecha en formato 'dd/mm/yyyy'
-                fecha = datetime.strptime(valor, "%d/%m/%Y")
+                fecha = datetime.strptime(valor, "%Y-%m-%d")
                 if fecha > datetime.today():
                     raise ValueError(f"El valor '{valor}' no puede ser una fecha futura.")
             except ValueError:
-                raise ValueError(f"El valor '{valor}' no tiene un formato de fecha válido (dd/mm/yyyy).")
+                raise ValueError(f"El valor '{valor}' no tiene un formato de fecha válido (yyyy-mm-d).")
             return True
 
         else:
             raise ValueError(f"El tipo de dato '{tipo_esperado}' no está soportado.")
 
+    def vistageneral(self):
+    
+        tabla = PrettyTable()
+        tabla.field_names = ["Índice"] + self.headers  # Agregamos el encabezado del índice
+    
+        # Preparamos todas las filas con su índice
+        filas_con_indices = [[i] + list(fila) for i, fila in enumerate(self.datos)]
+    
+        # Agregamos todas las filas a la tabla
+        for fila in filas_con_indices:
+            tabla.add_row(fila)
+    
+        print(tabla)
+
+
+    def vistaedicion(self, headers, fila_original, indice_fila):
+        subindices = [str(i) for i in range(len(headers))]
+        tabla = PrettyTable()
+        tabla.add_row(subindices)
+        tabla.add_row(headers)
+        tabla.add_row(fila_original)
+
+        print("\n--- Editando Fila ---")
+        print(f"Índice de la fila: {indice_fila}")
+        print(tabla)
+
+    
 # Ejemplo de uso
 if __name__ == "__main__":
     conexion = base_ddatos()  # Asume que 'base_ddatos()' está definida para la conexión.

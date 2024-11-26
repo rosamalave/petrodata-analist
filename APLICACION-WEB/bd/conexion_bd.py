@@ -15,64 +15,60 @@ class base_ddatos():
 
     def insertar(self,producto,nuevaf,esquema,tabla):
         cursor=self.conn.cursor()
-        print(nuevaf)
-        
+        print(f"Fila editada en insertar: {nuevaf}")
         self.conversionformatotabla(cursor, nuevaf,esquema,tabla)
-    
+        print(f"Fila en insertar convertida: {nuevaf}")
+        
         #extrayendo headers en una cadena
         nombres=[]
         headers=self.header(cursor,nombres,esquema,tabla)
-                
-        #extrayendo datos en una cadena
-        #def agregar datos/editar validar nuevaf
-        datos=""
-        for col in nuevaf:
-            datos=datos+col+", "
-        if datos.endswith(", "):
-            datos = datos[:-2]
+        print(f"Cadena headers: {headers}")
 
-        cursor.execute(f"INSERT INTO {esquema}.{tabla}({headers}) VALUES({datos})")
+        campos = ", ".join([f"%s" for col in nombres]) 
+               
+        consulta=f"INSERT INTO {esquema}.{tabla}({headers}) VALUES({campos})"
+        print(f"Consulta de insertar: {consulta}")
+        cursor.execute(consulta, nuevaf)
         self.conn.commit()
         cursor.close()
 
         #usada para editar e insertar informacion de 0 (puede ser la misma funcion)
-        
-    def eliminar(self,id,esquema,tabla):
-        cursor=self.conn.cursor()
-        id=self.buscar(cursor,id,esquema,tabla)
-        if id != -1:
-            cursor.execute(f"DELETE * FROM {esquema}.{tabla} WHERE id_{tabla} = {id}")
-        self.conn.commit()
-        cursor.close()
         
     def editar(self, id, producto, nuevaf, esquema, tabla):
     
         #Edita una fila en la base de datos actualizando todos los campos de la tabla, incluso los no editados.
 
         cursor = self.conn.cursor()
-    
+        print(f"fila en editar sin convertir {nuevaf}")
         # Asegurarse de que los datos estén en el formato adecuado para la tabla
         self.conversionformatotabla(cursor, nuevaf, esquema, tabla)
-
+        print(f"fila convertida {nuevaf}")
         # Extraer los nombres de las columnas (header)
         nombres = []
         self.header(cursor, nombres, esquema, tabla)  # nombres contendrá los encabezados de la tabla
 
         # Generar la cadena dinámica para el SET usando comprensión de listas y `join`
-        campos_set = ", ".join([f"{col} = %s" for col in nombres])
+        campos = ", ".join([f"{col} = %s" for col in nombres])
 
         # Verificar si el registro con `id` existe en la tabla
         if self.buscar(cursor, id, esquema, tabla):
             # Construir y ejecutar la consulta dinámica
-            query = f"UPDATE {esquema}.{tabla} SET {campos_set} WHERE id_{tabla} = %s"
-            print(f"Ejecutando consulta: {query}")
+            consulta = f"UPDATE {esquema}.{tabla} SET {campos} WHERE id_{tabla} = %s"
+            print(f"Ejecutando consulta: {consulta}")
             # Ejecutar la consulta con parámetros seguros
-            cursor.execute(query, nuevaf + [id])
+            cursor.execute(consulta, nuevaf + [id])
 
         # Guardar los cambios en la base de datos
         self.conn.commit()
         cursor.close()
 
+    def eliminar(self,id,esquema,tabla):
+        cursor=self.conn.cursor()
+        id=self.buscar(cursor,id,esquema,tabla)
+        if id != -1:
+            cursor.execute(f"DELETE FROM {esquema}.{tabla} WHERE id_{tabla} = {id}")
+        self.conn.commit()
+        cursor.close()
 
     def buscar(self,cursor,id,esquema,tabla):
         cursor.execute(f"SELECT * FROM {esquema}.{tabla} WHERE id_{tabla} = {id}")
@@ -114,11 +110,9 @@ class base_ddatos():
             nombres.append(str(col[0]))
 
         #extrayendo headers en una cadena
-        cadenanombres=""
-        for col in nombres:
-            cadenanombres=cadenanombres+col+", "
+        cadenanombres= ", ".join([f"{col}" for col in nombres])
 
-        return cadenanombres[:-2]
+        return cadenanombres
     
         #nocierra cursor
         #modifica vector nombres
