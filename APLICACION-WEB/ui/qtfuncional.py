@@ -7,7 +7,6 @@ class ExtendedUiForm(Ui_Form):
     def __init__(self, Form):
         self.setupUi(Form)
 
-
     def columnaedicion(self, accion, ruta, producto, esquema, tabla):
         num_filas = self.tabla.rowCount()
         num_columnas = self.tabla.columnCount()
