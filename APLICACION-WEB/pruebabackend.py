@@ -9,7 +9,7 @@ import os
 #van a representar continuidad para representar los indices del 0 al 1 
 #averiguar: es posible que la base de datos te de el indice superficial numeral de continuidad?
 #averiguar: es posible programar un script que cada vez que se elimine una fila se reinicie
-#el conteo para mantener continuidad
+#el conteo en el id para mantener continuidad
 
 def limpiar_consola():
     """
@@ -32,8 +32,7 @@ class ConsolaDB:
         cursor = self.conexion.conn.cursor()
         self.headers = []  # Inicializamos el vector de nombres
         cadenanombres = self.conexion.header(cursor, self.headers, self.esquema, self.tabla)
-        
-        print(f"SELECT {cadenanombres} FROM {self.esquema}.{self.tabla} ORDER BY id_{self.tabla} ASC LIMIT 10")
+
         cursor.execute(f"SELECT {cadenanombres} FROM {self.esquema}.{self.tabla} ORDER BY id_{self.tabla} ASC LIMIT 10")
         self.datos = cursor.fetchall()
         cursor.execute(f"SELECT * FROM {self.esquema}.{self.tabla} ORDER BY id_{self.tabla} ASC LIMIT 10")
@@ -76,17 +75,12 @@ class ConsolaDB:
                 print("\nFila eliminada con exito.")
             elif opcion == "4":
                 print("Saliendo del programa.")
-                break
-            
+                break      
             else:
                 print("Opción inválida. Intente de nuevo.")
 
     def agregardatos(self, operacion, indice):
-        """
-        Gestionar la edición o inserción de una fila.    
-        :param operacion: Función a ejecutar (self.insertarfila o self.editarfila).
-        :param indice: Índice de la fila a editar o insertar.
-        """
+   
         fila = list(self.datos[indice])
 
         self.vistaedicion(self.headers, fila, indice)
@@ -215,7 +209,6 @@ class ConsolaDB:
     
         print(tabla)
 
-
     def vistaedicion(self, headers, fila_original, indice_fila):
         subindices = [str(i) for i in range(len(headers))]
         tabla = PrettyTable()
@@ -227,7 +220,7 @@ class ConsolaDB:
         print(f"Índice de la fila: {indice_fila}")
         print(tabla)
 
-    
+
 # Ejemplo de uso
 if __name__ == "__main__":
     conexion = base_ddatos()  # Asume que 'base_ddatos()' está definida para la conexión.
