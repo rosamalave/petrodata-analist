@@ -141,16 +141,41 @@ class ConsolaDB:
         pass
 
     def eliminarfila(self):
+        if not self.datosall:
+            print("\nNo hay filas disponibles para eliminar.")
+            return
+
+        print("\n--- Eliminar Fila ---")
+        print("Índice\tID\tDatos")
+        for i, fila in enumerate(self.datosall):
+            print(f"{i}\t{fila[0]}\t{fila[1:]}")  # Muestra el índice, ID y datos de la fila.
+
         try:
-            indice = input("\nIngrese el índice de la fila que desea eliminar: ").strip()
-            if not indice.isdigit():
-                raise ValueError("El índice debe ser un número entero.")
-        except (ValueError, IndexError) as e:
-            print(f"Error: {e}")
-        indice = int(indice)
-        indice = self.datosall[indice][0]
-        self.conexion.eliminar(indice, self.esquema, self.tabla)
-        self.cargar_datos()
+            indice_superficial = input("\nIngrese el índice de la fila que desea eliminar: ").strip()
+            if not indice_superficial.isdigit():
+                raise ValueError("El índice debe ser un número entero válido.")
+
+            indice_superficial = int(indice_superficial)
+            if indice_superficial < 0 or indice_superficial >= len(self.datosall):
+                raise IndexError("El índice está fuera de rango.")
+
+            # Obtenemos el ID real de la fila a eliminar
+            id_real = self.datosall[indice_superficial][0]
+            confirmacion = input(f"¿Está seguro de que desea eliminar la fila con ID {id_real}? (s/n): ").strip().lower()
+            if confirmacion == 's':
+                self.conexion.eliminar(id_real, self.esquema, self.tabla)
+                self.cargar_datos()  # Recargar datos después de eliminar
+                print("\nFila eliminada con éxito.")
+            else:
+                print("\nOperación cancelada.")
+        except ValueError as ve:
+            print(f"Error: {ve}")
+        except IndexError as ie:
+            print(f"Error: {ie}")
+        except Exception as e:
+            print(f"Error inesperado: {e}")
+
+
 
     def opciones_separacion(self):
         while True:
