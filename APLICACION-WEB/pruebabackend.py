@@ -4,17 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 import os
 
-#funciona todo pero trabaja con los indices de la lista generada desde la base de datos en si
-#cambiar enfoque para que trabaje directamente con los id de la base de datos ya que no siempre los id
-#van a representar continuidad para representar los indices del 0 al 1 
-#averiguar: es posible que la base de datos te de el indice superficial numeral de continuidad?
-#averiguar: es posible programar un script que cada vez que se elimine una fila se reinicie
-#el conteo en el id para mantener continuidad
-
 def limpiar_consola():
-    """
-    Limpia la consola de manera universal (funciona en Windows y Unix).
-    """
     os.system('cls' if os.name == 'nt' else 'clear')
 
 class ConsolaDB:
@@ -38,117 +28,177 @@ class ConsolaDB:
         cursor.execute(f"SELECT * FROM {self.esquema}.{self.tabla} ORDER BY id_{self.tabla} ASC LIMIT 10")
         self.datosall = cursor.fetchall()
         cursor.close()
-        
+
     def menu_principal(self):
         while True:
-            self.vistageneral()
-            opcion = input("\n1) Agregar fila\n2) Editar fila\n3) Eliminar fila\n4) Salir\nSeleccione una opción: ")
+            self.vistageneral(self.datos)
+            print("\nMenú Principal:")
+            print("1) Agregar fila")
+            print("2) Editar fila")
+            print("3) Eliminar fila")
+            print("4) Opción de Separadores")
+            print("5) Filtrar datos")
+            print("6) Salir")
+            opcion = input("\nSeleccione una opción: ")
 
             if opcion == "1":
-                # Agregar una nueva fila
                 self.agregar_fila()
                 print("\nFila vacía agregada. Ahora puede editarla seleccionando la opción 2.")
-
             elif opcion == "2":
-                try:
-                    # Solicitar el índice de la fila a editar
-                    indice = input("\nIngrese el índice de la fila que desea editar: ").strip()
-                    if not indice.isdigit():
-                        raise ValueError("El índice debe ser un número entero.")
-                    indice = int(indice)
-
-                    # Determinar si se trata de inserción o edición
-                    fila = list(self.datos[indice])
-                    if all(celda is None for celda in fila):
-                        operacion = self.insertarfila
-                    else:
-                        operacion = self.editarfila
-
-                    # Gestionar la fila según la operación
-                    self.agregardatos(operacion, indice)
-
-                except (ValueError, IndexError) as e:
-                    print(f"Error: {e}")
-            elif opcion=="3":
-                # eliminar una fila
+                self.editar_fila()
+            elif opcion == "3":
                 self.eliminarfila()
-                print("\nFila eliminada con exito.")
+                print("\nFila eliminada con éxito.")
             elif opcion == "4":
+                self.opciones_separacion()
+            elif opcion == "5":
+                self.menu_filtros()
+            elif opcion == "6":
                 print("Saliendo del programa.")
                 break      
             else:
                 print("Opción inválida. Intente de nuevo.")
-
-    def agregardatos(self, operacion, indice):
-   
-        fila = list(self.datos[indice])
-
-        self.vistaedicion(self.headers, fila, indice)
-
+                
+    def menu_filtros(self):
         while True:
-            celda = input("\n¿Qué celda desea editar? (introduzca índice o 'x' para finalizar): ")
-            if celda.lower() == "x":
-                print("\nOperación finalizada.")
+            print("\nMenú de Filtros:")
+            print("1) Filtro por rango de fechas")
+            print("2) Filtro por valores numéricos")
+            print("3) Volver al menú principal")
+            opcion = input("\nSeleccione una opción: ")
+
+            if opcion == "1":
+                self.filtro_por_fecha()
+            elif opcion == "2":
+                self.filtro_por_valores()
+            elif opcion == "3":
                 break
-            try:
-                columna = int(celda)
-                if columna < 0 or columna >= len(self.headers):
-                    raise ValueError("Columna fuera de rango.")
+            else:
+                print("Opción inválida. Intente de nuevo.")
 
-                nuevo_valor = input(f"Ingrese el nuevo valor para '{self.headers[columna]}': ")
+    def filtro_por_fecha(self):
+        if 'produccion_c' in self.tabla:
+            # Filtro para datos diarios (real crudo)
+            fecha_inicio = input("Ingrese la fecha de inicio (día-mes-año): ")
+            fecha_fin = input("Ingrese la fecha de fin (día-mes-año): ")
+            fecha_inicio = datetime.strptime(fecha_inicio, "%d-%m-%Y").date()
+            fecha_fin = datetime.strptime(fecha_fin, "%d-%m-%Y").date()
+            
+            # Filtrar los datos por las fechas ingresadas
+            datos_filtrados = [fila for fila in self.datos if fecha_inicio <= fila[0] <= fecha_fin]
+            self.vistageneral(datos_filtrados)
 
-                # Validar el valor antes de asignarlo
-                self.validar(nuevo_valor, self.esquema, self.tabla, self.headers[columna])
-                fila[columna] = nuevo_valor
-                self.vistaedicion(self.headers, fila, indice)
-            except ValueError as e:
-                print(f"Error: {e}")
-                continue
+        elif 'produccion_g' in self.tabla or 'potencial' in self.tabla or 'diferida' in self.tabla:
+            # Filtro para datos promedios mensuales
+            fecha_inicio = input("Ingrese el mes de inicio (mes-año): ")
+            fecha_fin = input("Ingrese el mes de fin (mes-año): ")
+            fecha_inicio = datetime.strptime(fecha_inicio, "%m-%Y").date()
+            fecha_fin = datetime.strptime(fecha_fin, "%m-%Y").date()
+            
+            # Filtrar los datos por las fechas ingresadas
+            datos_filtrados = [fila for fila in self.datos if fecha_inicio <= fila[1] <= fecha_fin]
+            self.vistageneral(datos_filtrados)
 
-        # Llamar a la operación final (insertar o editar)
-        operacion(indice, fila)
-        self.cargar_datos()
+        # Validar que el rango de fechas sea válido
+        if fecha_inicio > fecha_fin:
+            print("El rango de fechas es inválido. La fecha de inicio no puede ser posterior a la fecha de fin.")
+        else:
+            print(f"Filtrando datos entre {fecha_inicio.strftime('%d-%m-%Y')} y {fecha_fin.strftime('%d-%m-%Y')}...")
+            self.vistageneral(datos_filtrados)
 
-
-    def editarfila(self, indice, fila_editada):
-        indice=self.datosall[indice][0]
-        self.conexion.editar(indice, None, fila_editada, self.esquema, self.tabla)
-        print("\nFila editada correctamente.")
-
-
-    def insertarfila(self, _, nueva_fila):
-        self.conexion.insertar(None, nueva_fila, self.esquema, self.tabla)
-        print("\nNueva fila insertada correctamente.")
-    
-    def eliminarfila(self):
-        try:
-            # Solicitar el índice de la fila a editar
-            indice = input("\nIngrese el índice de la fila que desea editar: ").strip()
-            if not indice.isdigit():
-                raise ValueError("El índice debe ser un número entero.")
-        except (ValueError, IndexError) as e:
-            print(f"Error: {e}")
-        indice = int(indice)
-        indice=self.datosall[indice][0]
-        self.conexion.eliminar(indice, self.esquema, self.tabla)
-        self.cargar_datos()
+    def filtro_por_valores(self):
+        print("\nSeleccione el campo numérico para aplicar el filtro:")
+        campos_numericos = [header for header in self.headers if header not in ['fecha', 'id']]  # Filtramos las fechas y la columna ID
+        for i, campo in enumerate(campos_numericos):
+            print(f"{i+1}) {campo}")
         
+        opcion = input("\nSeleccione una opción: ")
+        try:
+            campo_seleccionado = campos_numericos[int(opcion) - 1]
+            valor_min = input(f"Ingrese el valor mínimo para {campo_seleccionado}: ")
+            valor_max = input(f"Ingrese el valor máximo para {campo_seleccionado}: ")
+            valor_min = Decimal(valor_min)
+            valor_max = Decimal(valor_max)
+
+            # Validar que el rango sea válido
+            if valor_min > valor_max:
+                print(f"El rango para {campo_seleccionado} es inválido. El valor mínimo no puede ser mayor que el máximo.")
+            else:
+                # Filtrar los datos por los valores numéricos
+                datos_filtrados = [fila for fila in self.datos if valor_min <= fila[self.headers.index(campo_seleccionado)] <= valor_max]
+                print(f"Filtrando datos para {campo_seleccionado} entre {valor_min} y {valor_max}...")
+                self.vistageneral(datos_filtrados)
+        except (IndexError, ValueError):
+            print("Opción inválida. Intente de nuevo.")
+
     def agregar_fila(self):
         nueva_fila = [None] * len(self.headers)
         self.datos.append(nueva_fila)
         print("\nFila vacía agregada. Ahora puede editarla.")
 
+    def editar_fila(self):
+        # Implementar la lógica para editar fila aquí
+        pass
+
+    def eliminarfila(self):
+        try:
+            indice = input("\nIngrese el índice de la fila que desea eliminar: ").strip()
+            if not indice.isdigit():
+                raise ValueError("El índice debe ser un número entero.")
+        except (ValueError, IndexError) as e:
+            print(f"Error: {e}")
+        indice = int(indice)
+        indice = self.datosall[indice][0]
+        self.conexion.eliminar(indice, self.esquema, self.tabla)
+        self.cargar_datos()
+
+    def opciones_separacion(self):
+        while True:
+            print("\nOpciones de Separación:")
+            print("1) Anual")
+            print("2) Mensual")
+            print("3) Volver")
+            opcion = input("\nSeleccione una opción: ")
+
+            if opcion == "1":
+                self.aplicar_separador("anual")
+                break
+            elif opcion == "2":
+                self.aplicar_separador("mensual")
+                break
+            elif opcion == "3":
+                break
+            else:
+                print("Opción inválida. Intente de nuevo.")
+                
+    def aplicar_separador(self, tipo_periodo):
+        tabla = PrettyTable()
+        tabla.field_names = ["Índice"] + self.headers
+        
+        filas_con_indices = [[i] + list(fila) for i, fila in enumerate(self.datos)]
+        
+        ultimo_periodo = None
+        for fila in filas_con_indices:
+            fecha = fila[1]
+            if tipo_periodo == "anual":
+                periodo = fecha.year
+            elif tipo_periodo == "mensual":
+                periodo = (fecha.year, fecha.month)
+
+            if ultimo_periodo != periodo:
+                if tipo_periodo == "anual":
+                    tabla.add_row(["----- " + str(periodo) + " -----"] + [""] * (len(self.headers)))
+                elif tipo_periodo == "mensual":
+                    nombre_mes = fecha.strftime("%B")
+                    tabla.add_row([f"----- {nombre_mes} -----"] + [""] * (len(self.headers)))
+
+                ultimo_periodo = periodo
+
+            tabla.add_row(fila)
+
+        print(tabla)
 
     def validar(self, valor, esquema, tabla, columna, permite_nulo=False):
-        """
-        - Números no negativos
-        - Fechas no mayores a hoy
-        :param valor: El dato a validar.
-        :param permite_nulo: Indica si se permite que el valor sea nulo.
-        :return: True si el dato es válido.
-        :raises ValueError: Si el dato no cumple con las reglas lógicas.
-        """
-        # Consultar tipo de dato directamente desde la base de datos
         cursor = self.conexion.conn.cursor()
         query = f"""
         SELECT data_type
@@ -166,14 +216,12 @@ class ConsolaDB:
 
         tipo_esperado = tipo_dato[0]
 
-        # Validar si el valor es nulo
         if valor is None or str(valor).strip() == "":
             if permite_nulo:
                 return True
             else:
                 raise ValueError("El valor no puede ser nulo o vacío.")
         
-        # Validar tipo de dato esperado
         if tipo_esperado in ('int', 'bigint', 'numeric'):
             try:
                 numero = float(valor)
@@ -189,24 +237,16 @@ class ConsolaDB:
                 if fecha > datetime.today():
                     raise ValueError(f"El valor '{valor}' no puede ser una fecha futura.")
             except ValueError:
-                raise ValueError(f"El valor '{valor}' no tiene un formato de fecha válido (yyyy-mm-d).")
+                raise ValueError(f"El valor '{valor}' no es una fecha válida.")
             return True
-
         else:
-            raise ValueError(f"El tipo de dato '{tipo_esperado}' no está soportado.")
+            raise ValueError(f"Tipo de dato no soportado '{tipo_esperado}'.")
 
-    def vistageneral(self):
-    
+    def vistageneral(self, data):
         tabla = PrettyTable()
-        tabla.field_names = ["Índice"] + self.headers  # Agregamos el encabezado del índice
-    
-        # Preparamos todas las filas con su índice
-        filas_con_indices = [[i] + list(fila) for i, fila in enumerate(self.datos)]
-    
-        # Agregamos todas las filas a la tabla
-        for fila in filas_con_indices:
+        tabla.field_names = self.headers
+        for fila in data:
             tabla.add_row(fila)
-    
         print(tabla)
 
     def vistaedicion(self, headers, fila_original, indice_fila):
@@ -219,7 +259,6 @@ class ConsolaDB:
         print("\n--- Editando Fila ---")
         print(f"Índice de la fila: {indice_fila}")
         print(tabla)
-
 
 # Ejemplo de uso
 if __name__ == "__main__":

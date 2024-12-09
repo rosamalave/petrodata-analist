@@ -1,0 +1,182 @@
+filtro-paginacion peridiocidad: este filtro manejara vista de tabla y agrupacion de datos de acuerdo al periodo
+
+
+BOTONES
+
+BOTON PERIDIOCIDAD: anual, mensual, todos
+agrega delimitadores (netamente visuales) a los datos para agruparlos de acuerdo a la opcion correspondiente
+BOTON CANTIDAD: 1,2,3...
+determina cuantos periodos (MESES,AÑOS) apareceran por pagina, para establecer paginacion 
+
+nota: todos muestra todo sin agrupacion ni delimitacion, el boton cantidad se habilita para colocar n cantidad de registros por pagina, debe establecer un predeterminado igualmente 
+
+COMPORTAMIENTOS
+
+PARA TABLAS CON DATOS PROMEDIOS MENSUALES: real gas, potencial crudo, diferida crudo
+
+OPCIONES  POR BOTON
+ - BOTON PERIDIOCIDAD
+      +anual
+      +todos
+
+ - BOTON CANTIDAD
+      + para anual: 1 al 4
+      + para todos: minimo 10 maximo 100 (barra movible como de sonido)
+
+
+PARA TABLAS CON DATOS PROMEDIOS DIARIOS: real crudo
+
+OPCIONES  POR BOTON
+ - BOTON PERIDIOCIDAD
+      +mensual
+      +anual
+      +todos
+
+ - BOTON CANTIDAD
+      + para mensual: 1 o 2 o 3
+      + para anual: 1
+      + para todos: minimo 10 maximo 100 (barra movible como de sonido)
+
+
+flujo:
+
+1. botón peridiocidad: al ingresar el periodo se va a delimitar los datos con un separador entre cada periodo ingresado sea año o mes
+2. botón cantidad: el botón cantidad es el que determina de acuerdo a lo especificado en el botón peridiocidad cuantos periodos (agrupacion de filas por peridiocidad) habran por pagina 
+
+
+haz una función que reciba cada cuanto se va a dividir (si es por año o por mes, peridiocidad) con el vector de la base de datos y agregue la separación superfifcial en la tabla de consola. Y otra que reciba la cantidad que indica cuantos periodos se mostraran por pagina y marque la paginación
+
+
+Ejemplo
+TABLA PRODUCCION (datos diarios)
+BOTON PERIDIOCIDAD= MES 
+BOTON CANTIDAD= 2
+
+Resultado
+
+pagina 1
+-----enero-------
+*mostrando 31 filas de enero*
+----febrero------
+*mostrando 28 filas de febrero*
+
+pagina 2
+-----marzo-------
+*mostrando 30 filas de marzo*
+------abril------
+*mostrando 30 filas de abril*
+
+se estan mostrando 2 meses por pagina (60 filas aprox), separadas por un su delimitador
+
+
+
+from tabulate import tabulate
+import os
+
+def agrupar_por_periodo(datos, periodicidad):
+    """
+    Agrupa los datos por mes o año, agregando separadores visuales.
+
+    :param datos: Lista de tuplas (fecha, valores...), donde la fecha es 'YYYY-MM-DD'.
+    :param periodicidad: 'mes', 'año' o 'todos'.
+    :return: Lista de grupos con delimitadores visuales.
+    """
+    if periodicidad == "todos":
+        return datos  # Sin agrupación
+
+    grupos = {}
+    for fila in datos:
+        fecha = fila[0]
+        if periodicidad == "mes":
+            clave = fecha[:7]  # YYYY-MM
+        elif periodicidad == "año":
+            clave = fecha[:4]  # YYYY
+        else:
+            raise ValueError("Periodicidad inválida. Usa 'mes', 'año' o 'todos'.")
+
+        if clave not in grupos:
+            grupos[clave] = []
+        grupos[clave].append(fila)
+
+    resultado = []
+    for clave, filas in grupos.items():
+        resultado.append((f"-----{clave}-----",))
+        resultado.extend(filas)
+
+    return resultado
+
+def paginar(datos, cantidad_por_pagina):
+    """
+    Divide los datos en páginas según la cantidad de grupos por página.
+
+    :param datos: Lista de datos agrupados.
+    :param cantidad_por_pagina: Número de periodos a mostrar por página.
+    :return: Lista de páginas.
+    """
+    paginas = []
+    pagina_actual = []
+    contador = 0
+
+    for fila in datos:
+        if "-----" in fila[0]:  # Es un delimitador
+            if contador == cantidad_por_pagina:
+                paginas.append(pagina_actual)
+                pagina_actual = []
+                contador = 0
+            contador += 1
+        pagina_actual.append(fila)
+
+    if pagina_actual:  # Agregar la última página si tiene contenido
+        paginas.append(pagina_actual)
+
+    return paginas
+
+def mostrar_paginacion(paginas):
+    """
+    Muestra las páginas de datos en la consola con navegación.
+
+    :param paginas: Lista de páginas.
+    """
+    pagina_actual = 0
+    while True:
+        os.system("cls" if os.name == "nt" else "clear")
+        print(f"Página {pagina_actual + 1}/{len(paginas)}\n")
+        print(tabulate(paginas[pagina_actual], tablefmt="plain"))
+        print("\n[N] Siguiente | [P] Anterior | [Q] Salir")
+        opcion = input("Selecciona una opción: ").strip().lower()
+
+        if opcion == "n" and pagina_actual < len(paginas) - 1:
+            pagina_actual += 1
+        elif opcion == "p" and pagina_actual > 0:
+            pagina_actual -= 1
+        elif opcion == "q":
+            break
+        else:
+            print("Opción inválida. Intenta nuevamente.")
+
+# Datos de ejemplo
+datos = [
+    ("2024-01-01", 100),
+    ("2024-01-02", 200),
+    ("2024-02-01", 150),
+    ("2024-02-02", 250),
+    ("2024-03-01", 300),
+    ("2024-03-02", 350),
+    ("2024-04-01", 400),
+    ("2024-04-02", 450),
+    ("2025-01-01", 500),
+    ("2025-01-02", 550),
+]
+
+# Configuración
+periodicidad = "mes"  # 'mes', 'año', 'todos'
+cantidad_por_pagina = 2  # Cantidad de meses/años por página
+
+# Agrupar y paginar
+datos_agrupados = agrupar_por_periodo(datos, periodicidad)
+paginas = paginar(datos_agrupados, cantidad_por_pagina)
+
+# Mostrar resultado con paginación
+mostrar_paginacion(paginas)
+
+me podrías explicar este código paso a paso por favor
