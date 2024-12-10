@@ -4,6 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 import os
 
+
 # Función para limpiar la consola
 def limpiar_consola():
     os.system('cls' if os.name == 'nt' else 'clear')
