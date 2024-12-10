@@ -4,12 +4,9 @@ from datetime import datetime
 from decimal import Decimal
 import os
 
-#tomar la ultima funcion de eliminar correcta y volverla a separar 
-
 # Función para limpiar la consola
 def limpiar_consola():
     os.system('cls' if os.name == 'nt' else 'clear')
-
 
 class ConsolaDBBackend:
     def __init__(self, conexion_bd, esquema, tabla):
@@ -273,8 +270,6 @@ class ConsolaDBFrontend:
             except ValueError as e:
                 print(e)
 
-
-
     def filtro_por_valores(self):
         print("\nSeleccione el campo numérico para aplicar el filtro:")
         campos_numericos = [header for header in self.backend.headers if header not in ['fecha', 'id']]
@@ -347,7 +342,6 @@ class ConsolaDBFrontend:
         tabla.add_row(fila_original)
         print("\n--- Editando Fila ---")
         print(tabla)
-
 
 if __name__ == "__main__":
     conexion = base_ddatos()
