@@ -31,10 +31,8 @@ class ConsolaDBBackend:
         cursor.close()
 
 
-    def aplicar_separador(self, tipo_periodo):
-        tabla = PrettyTable()
-        tabla.field_names = ["Índice"] + self.headers
-        filas_con_indices = [[i] + list(fila) for i, fila in enumerate(self.datos)]
+    def aplicar_separador(self, tipo_periodo, tabla, filas_con_indices):
+
         ultimo_periodo = None
 
         for fila in filas_con_indices:
@@ -311,12 +309,16 @@ class ConsolaDBFrontend:
             print("3) Volver")
             opcion = input("\nSeleccione una opción: ")
 
+            tabla = PrettyTable()
+            tabla.field_names = ["Índice"] + self.backend.headers
+            filas_con_indices = [[i] + list(fila) for i, fila in enumerate(self.backend.datos)]
+
             if opcion == "1":
-                print(self.backend.aplicar_separador("anual"))
+                print(self.backend.aplicar_separador("anual", tabla, filas_con_indices))
                 input("teclee para seguir")
                 break
             elif opcion == "2":
-                print(self.backend.aplicar_separador("mensual"))
+                print(self.backend.aplicar_separador("mensual", tabla, filas_con_indices))
                 input("teclee para seguir")
                 break
             elif opcion == "3":
