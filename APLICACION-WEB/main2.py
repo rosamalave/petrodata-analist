@@ -1,89 +1,14 @@
 import sys
 from PyQt5 import QtWidgets, QtCore
-from pruebabackend import ConsolaDBBackend, ConsolaDBFrontend
-from qtdesign import Ui_Form
+from pruebabackend import ConsolaDBBackend
 from bd.conexion_bd import base_ddatos
 
-class Main(QtWidgets.QWidget, Ui_Form):
+class Main():
 
     def __init__(self):
         super().__init__()
-        self.setupUi(self)  # Inicializa la interfaz de QtDesign
-
-        # Crear un layout horizontal para la clase Main
-        self.main_layout = QtWidgets.QHBoxLayout(self)  # Inicializa el layout aquí
-        self.setLayout(self.main_layout)
-
-        # Crear un contenedor para la barra lateral
-        self.sidebar = QtWidgets.QWidget()
-        self.sidebar_layout = QtWidgets.QVBoxLayout(self.sidebar)
-
-        # Establecer un tamaño mínimo para la barra lateral
-        self.sidebar.setMinimumWidth(200)  # Ajusta el ancho mínimo según sea necesario
-
-        # Crear el contenedor para filtrar por valores
-        self.filtro_valores_widget = QtWidgets.QGroupBox("Filtrar por valores")
-        self.filtro_valores_layout = QtWidgets.QVBoxLayout()
-        self.valor_min = QtWidgets.QSpinBox()
-        self.valor_min.setRange(500, 20000)
-        self.valor_max = QtWidgets.QSpinBox()
-        self.valor_max.setRange(500, 20000)
-        self.filtrar_valores_button = QtWidgets.QPushButton("Filtrar")
-        self.filtrar_valores_button.clicked.connect(self.filtro_por_valores)
-
-        self.filtro_valores_layout.addWidget(QtWidgets.QLabel("Valor mínimo:"))
-        self.filtro_valores_layout.addWidget(self.valor_min)
-        self.filtro_valores_layout.addWidget(QtWidgets.QLabel("Valor máximo:"))
-        self.filtro_valores_layout.addWidget(self.valor_max)
-        self.filtro_valores_layout.addWidget(self.filtrar_valores_button)
-        self.filtro_valores_widget.setLayout(self.filtro_valores_layout)
-
-        # Crear el contenedor para filtrar por fechas
-        self.filtro_fechas_widget = QtWidgets.QGroupBox("Filtrar por fechas")
-        self.filtro_fechas_layout = QtWidgets.QVBoxLayout()
-        self.fecha_inicio = QtWidgets.QDateEdit()
-        self.fecha_inicio.setCalendarPopup(True)
-        self.fecha_fin = QtWidgets.QDateEdit()
-        self.fecha_fin.setCalendarPopup(True)
-        self.filtrar_fechas_button = QtWidgets.QPushButton("Filtrar")
-        self.filtrar_fechas_button.clicked.connect(self.filtro_por_fecha)
-
-        self.filtro_fechas_layout.addWidget(QtWidgets.QLabel("Fecha inicio:"))
-        self.filtro_fechas_layout.addWidget(self.fecha_inicio)
-        self.filtro_fechas_layout.addWidget(QtWidgets.QLabel("Fecha fin:"))
-        self.filtro_fechas_layout.addWidget(self.fecha_fin)
-        self.filtro_fechas_layout.addWidget(self.filtrar_fechas_button)
-        self.filtro_fechas_widget.setLayout(self.filtro_fechas_layout)
-
-        # Agregar los widgets de filtro a la barra lateral
-        self.sidebar_layout.addWidget(self.filtro_valores_widget)
-        self.sidebar_layout.addWidget(self.filtro_fechas_widget)
-
-        # Conectar el botón de agregar fila
-        self.aggfila = QtWidgets.QPushButton("Agregar fila")
-        self.aggfila.clicked.connect(self.agregar_fila)
-        self.sidebar_layout.addWidget(self.aggfila)
-
-        # Conectar el botón de editar fila
-        self.editar_fila_button = QtWidgets.QPushButton("Editar fila")
-        self.editar_fila_button.clicked.connect(self.editar_fila)
-        self.sidebar_layout.addWidget(self.editar_fila_button)
-
-        # Botón para guardar cambios
-        self.guardar_button = QtWidgets.QPushButton("Guardar cambios")
-        self.guardar_button.clicked.connect(self.guardar_cambios)
-        self.sidebar_layout.addWidget(self.guardar_button)
-        self.guardar_button.setVisible(False)  # Ocultar inicialmente
-
-        # Variable para almacenar el índice de la fila seleccionada
-        self.indice_seleccionado = None
-
         # Inicializar la conexión a la base de datos
         self.conexion = ConsolaDBBackend(base_ddatos(), "public", "produccion_c")
-        self.frontend = ConsolaDBFrontend(self.conexion)
-
-        # Agregar la barra lateral al layout principal
-        self.main_layout.addWidget(self.sidebar)
 
     def agregar_fila(self):
         self.conexion.agregar_fila()
@@ -147,8 +72,3 @@ class Main(QtWidgets.QWidget, Ui_Form):
         print("Saliendo del programa.")
         sys.exit()
 
-if __name__ == "__main__":
-    app = QtWidgets.QApplication(sys.argv)
-    main = Main()
-    main.show()
-    sys.exit(app.exec_())

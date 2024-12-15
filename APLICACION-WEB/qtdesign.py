@@ -1,13 +1,13 @@
 import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
 from pruebabackend import ConsolaDBBackend
+from main2 import Main
 from bd.conexion_bd import base_ddatos
 
 class Ui_Form(object):
     def __init__(self):
+        self.accion=Main()
         self.conexion= ConsolaDBBackend(base_ddatos(), "public", "produccion_c")
-
-        
     def setupUi(self, Form):
         
         Form.setObjectName("Form")
@@ -25,6 +25,75 @@ class Ui_Form(object):
         self.barra_lateral.setObjectName("barra_lateral")
         self.barra_lateral.setStyleSheet("background-color: #f0f0f0; border-radius: 5px;")
 
+        # Crear un contenedor para el layout principal
+        self.main_container = QtWidgets.QWidget(Form)  # Crear un nuevo QWidget
+        self.main_layout = QtWidgets.QHBoxLayout(self.main_container)  # Inicializa el layout aquí
+        Form.setLayout(self.main_layout)  # Establecer el layout en el contenedor principal
+
+
+        # Crear un contenedor para la barra lateral
+        self.sidebar = QtWidgets.QWidget()
+        self.sidebar_layout = QtWidgets.QVBoxLayout(self.sidebar)
+
+        # Establecer un tamaño mínimo para la barra lateral
+        self.sidebar.setMinimumWidth(200)  # Ajusta el ancho mínimo según sea necesario
+
+        # Crear el contenedor para filtrar por valores
+        self.filtro_valores_widget = QtWidgets.QGroupBox("Filtrar por valores")
+        self.filtro_valores_layout = QtWidgets.QVBoxLayout()
+        self.valor_min = QtWidgets.QSpinBox()
+        self.valor_min.setRange(500, 20000)
+        self.valor_max = QtWidgets.QSpinBox()
+        self.valor_max.setRange(500, 20000)
+        self.filtrar_valores_button = QtWidgets.QPushButton("Filtrar")
+        self.filtrar_valores_button.clicked.connect(self.accion.filtro_por_valores)
+
+        self.filtro_valores_layout.addWidget(QtWidgets.QLabel("Valor mínimo:"))
+        self.filtro_valores_layout.addWidget(self.valor_min)
+        self.filtro_valores_layout.addWidget(QtWidgets.QLabel("Valor máximo:"))
+        self.filtro_valores_layout.addWidget(self.valor_max)
+        self.filtro_valores_layout.addWidget(self.filtrar_valores_button)
+        self.filtro_valores_widget.setLayout(self.filtro_valores_layout)
+
+        # Crear el contenedor para filtrar por fechas
+        self.filtro_fechas_widget = QtWidgets.QGroupBox("Filtrar por fechas")
+        self.filtro_fechas_layout = QtWidgets.QVBoxLayout()
+        self.fecha_inicio = QtWidgets.QDateEdit()
+        self.fecha_inicio.setCalendarPopup(True)
+        self.fecha_fin = QtWidgets.QDateEdit()
+        self.fecha_fin.setCalendarPopup(True)
+        self.filtrar_fechas_button = QtWidgets.QPushButton("Filtrar")
+        self.filtrar_fechas_button.clicked.connect(self.accion.filtro_por_fecha)
+
+        self.filtro_fechas_layout.addWidget(QtWidgets.QLabel("Fecha inicio:"))
+        self.filtro_fechas_layout.addWidget(self.fecha_inicio)
+        self.filtro_fechas_layout.addWidget(QtWidgets.QLabel("Fecha fin:"))
+        self.filtro_fechas_layout.addWidget(self.fecha_fin)
+        self.filtro_fechas_layout.addWidget(self.filtrar_fechas_button)
+        self.filtro_fechas_widget.setLayout(self.filtro_fechas_layout)
+
+        # Agregar los widgets de filtro a la barra lateral
+        self.sidebar_layout.addWidget(self.filtro_valores_widget)
+        self.sidebar_layout.addWidget(self.filtro_fechas_widget)
+
+        # Conectar el botón de agregar fila
+        self.aggfila = QtWidgets.QPushButton("Agregar fila")
+        self.aggfila.clicked.connect(self.accion.agregar_fila)
+        self.sidebar_layout.addWidget(self.aggfila)
+
+        # Conectar el botón de editar fila
+        self.editar_fila_button = QtWidgets.QPushButton("Editar fila")
+        self.editar_fila_button.clicked.connect(self.accion.editar_fila)
+        self.sidebar_layout.addWidget(self.editar_fila_button)
+
+        # Botón para guardar cambios
+        self.guardar_button = QtWidgets.QPushButton("Guardar cambios")
+        self.guardar_button.clicked.connect(self.accion.guardar_cambios)
+        self.sidebar_layout.addWidget(self.guardar_button)
+        self.guardar_button.setVisible(False)  # Ocultar inicialmente
+
+        # Variable para almacenar el índice de la fila seleccionada
+        self.indice_seleccionado = None
 
         # Configuración del contenedor para la tabla
         tabla_ancho = Form.width() - barra_lateral_ancho - 40  # Ajustando espacio total menos márgenes
@@ -97,6 +166,7 @@ class Ui_Form(object):
                 item.setTextAlignment(QtCore.Qt.AlignCenter)  # Alinear texto al centro
                 self.tabla.setItem(row_position, column, item)
 
+        self.main_layout.addWidget(self.sidebar)
 
     def retranslateUi(self, Form):
         _translate = QtCore.QCoreApplication.translate
