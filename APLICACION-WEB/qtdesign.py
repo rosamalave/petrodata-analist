@@ -1,7 +1,15 @@
+import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
+from pruebabackend import ConsolaDBBackend
+from bd.conexion_bd import base_ddatos
 
 class Ui_Form(object):
+    def __init__(self):
+        self.conexion= ConsolaDBBackend(base_ddatos(), "public", "produccion_c")
+
+        
     def setupUi(self, Form):
+        
         Form.setObjectName("Form")
         Form.resize(1366, 768)  # Resolución estándar de una laptop (puedes ajustar según sea necesario)
 
@@ -17,29 +25,6 @@ class Ui_Form(object):
         self.barra_lateral.setObjectName("barra_lateral")
         self.barra_lateral.setStyleSheet("background-color: #f0f0f0; border-radius: 5px;")
 
-        # Botón para agregar filas
-        self.aggfila = QtWidgets.QPushButton(self.barra_lateral)
-        self.aggfila.setGeometry(
-            QtCore.QRect(
-                int(barra_lateral_ancho * 0.2),  # Centrado horizontalmente (20% del ancho total como margen)
-                50,  # Posición vertical inicial (puedes ajustar según quieras)
-                int(barra_lateral_ancho * 0.6),  # Ancho del botón (60% del ancho de la barra lateral)
-                40,  # Altura del botón
-            )
-        )
-        self.aggfila.setObjectName("agregar_fila")
-        self.aggfila.setStyleSheet("""
-            QPushButton {
-                font-size: 14px;
-                background-color: #4caf50;
-                color: white;
-                border-radius: 5px;
-                padding: 5px;
-            }
-            QPushButton:hover {
-                background-color: #45a049;
-            }
-        """)
 
         # Configuración del contenedor para la tabla
         tabla_ancho = Form.width() - barra_lateral_ancho - 40  # Ajustando espacio total menos márgenes
@@ -77,12 +62,6 @@ class Ui_Form(object):
             }
         """)
 
-        # Encabezados horizontales
-        encabezados = ["ID", "SHIPIFY", "DATE", "STATUS", "CUSTOMER", "EMAIL", "COUNTRY", "ORDER TYPE"]
-        self.tabla.setHorizontalHeaderLabels(encabezados)
-        self.tabla.horizontalHeader().setStretchLastSection(True)
-        self.tabla.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
-
         # Oculta el encabezado vertical
         self.tabla.verticalHeader().setVisible(False)
 
@@ -96,8 +75,53 @@ class Ui_Form(object):
         # Añadir barra de desplazamiento
         self.tabla.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
         self.tabla.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        # Configuraciones adicionales de la tabla
+        self.tabla.setAlternatingRowColors(True)  # Alternar colores de fila
+        self.tabla.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)  # Seleccionar filas completas
+        self.tabla.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)  # Desactivar edición de celdas
+
+        # Configuraciones adicionales de la tabla
+        self.tabla.setRowCount(0)  # Limpiar filas existentes
+        self.tabla.setColumnCount(len(self.conexion.headers))  # Establecer el número de columnas según los headers
+        self.tabla.setHorizontalHeaderLabels(self.conexion.headers)  # Establecer los encabezados desde la base de datos
+
+        header = self.tabla.horizontalHeader()
+        header.setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        
+        # Cargar los datos en la tabla
+        for fila in self.conexion.datos:
+            row_position = self.tabla.rowCount()
+            self.tabla.insertRow(row_position)
+            for column, value in enumerate(fila):
+                item = QtWidgets.QTableWidgetItem(str(value))
+                item.setTextAlignment(QtCore.Qt.AlignCenter)  # Alinear texto al centro
+                self.tabla.setItem(row_position, column, item)
+
 
     def retranslateUi(self, Form):
         _translate = QtCore.QCoreApplication.translate
         Form.setWindowTitle(_translate("Form", "Form"))
         self.tabla.setSortingEnabled(True)
+
+ 
+
+if __name__ == "__main__":
+    # Crear una instancia de QApplication
+    app = QtWidgets.QApplication(sys.argv)
+
+    # Crear el contenedor principal de la ventana
+    MainWindow = QtWidgets.QWidget()
+
+    # Crear una instancia de la clase Ui_Form
+    ui = Ui_Form()
+
+    # Configurar la interfaz para el contenedor principal
+    ui.setupUi(MainWindow)
+
+
+    # Mostrar la ventana principal
+    MainWindow.show()
+
+    # Ejecutar el bucle principal de la aplicación
+    sys.exit(app.exec_())
+
