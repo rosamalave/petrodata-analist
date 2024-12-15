@@ -8,6 +8,7 @@ class Ui_Form(object):
     def __init__(self):
         self.accion=Main()
         self.conexion= ConsolaDBBackend(base_ddatos(), "public", "produccion_c")
+
     def setupUi(self, Form):
         
         Form.setObjectName("Form")
@@ -30,10 +31,9 @@ class Ui_Form(object):
         self.main_layout = QtWidgets.QHBoxLayout(self.main_container)  # Inicializa el layout aquí
         Form.setLayout(self.main_layout)  # Establecer el layout en el contenedor principal
 
-
         # Crear un contenedor para la barra lateral
-        self.sidebar = QtWidgets.QWidget()
-        self.sidebar_layout = QtWidgets.QVBoxLayout(self.sidebar)
+        self.sidebar = QtWidgets.QWidget(Form)  # Asegúrate de crear el widget de la barra lateral aquí
+        self.sidebar_layout = QtWidgets.QVBoxLayout(self.sidebar)  # Crear el layout y asignarlo al widget
 
         # Establecer un tamaño mínimo para la barra lateral
         self.sidebar.setMinimumWidth(200)  # Ajusta el ancho mínimo según sea necesario
@@ -94,6 +94,9 @@ class Ui_Form(object):
 
         # Variable para almacenar el índice de la fila seleccionada
         self.indice_seleccionado = None
+        
+        # Agregar la barra lateral al layout principal
+        self.main_layout.addWidget(self.sidebar)
 
         # Configuración del contenedor para la tabla
         tabla_ancho = Form.width() - barra_lateral_ancho - 40  # Ajustando espacio total menos márgenes
@@ -166,14 +169,14 @@ class Ui_Form(object):
                 item.setTextAlignment(QtCore.Qt.AlignCenter)  # Alinear texto al centro
                 self.tabla.setItem(row_position, column, item)
 
-        self.main_layout.addWidget(self.sidebar)
+        # Agregar el contenedor de la tabla al layout principal
+        self.main_layout.addWidget(self.contenedortabla)
+
 
     def retranslateUi(self, Form):
         _translate = QtCore.QCoreApplication.translate
         Form.setWindowTitle(_translate("Form", "Form"))
         self.tabla.setSortingEnabled(True)
-
- 
 
 if __name__ == "__main__":
     # Crear una instancia de QApplication
