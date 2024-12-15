@@ -14,18 +14,6 @@ class Ui_Form(object):
         Form.setObjectName("Form")
         Form.resize(1366, 768)  # Resolución estándar de una laptop (puedes ajustar según sea necesario)
 
-        # Espacio reservado para la barra lateral (20% del ancho total)
-        barra_lateral_ancho = int(Form.width() * 0.2)
-        barra_lateral_alto = Form.height() - 40  # Altura total, menos márgenes
-
-        # Configuración del contenedor de la barra lateral
-        self.barra_lateral = QtWidgets.QWidget(Form)
-        self.barra_lateral.setGeometry(
-            QtCore.QRect(20, 20, barra_lateral_ancho, barra_lateral_alto)
-        )
-        self.barra_lateral.setObjectName("barra_lateral")
-        self.barra_lateral.setStyleSheet("background-color: #f0f0f0; border-radius: 5px;")
-
         # Crear un contenedor para el layout principal
         self.main_container = QtWidgets.QWidget(Form)  # Crear un nuevo QWidget
         self.main_layout = QtWidgets.QHBoxLayout(self.main_container)  # Inicializa el layout aquí
@@ -35,8 +23,8 @@ class Ui_Form(object):
         self.sidebar = QtWidgets.QWidget(Form)  # Asegúrate de crear el widget de la barra lateral aquí
         self.sidebar_layout = QtWidgets.QVBoxLayout(self.sidebar)  # Crear el layout y asignarlo al widget
 
-        # Establecer un tamaño mínimo para la barra lateral
-        self.sidebar.setMinimumWidth(200)  # Ajusta el ancho mínimo según sea necesario
+        # Establecer un tamaño fijo para la barra lateral (20% del ancho total)
+        self.sidebar.setFixedWidth(int(Form.width() * 0.20))  # Ajusta el ancho según sea necesario
 
         # Crear el contenedor para filtrar por valores
         self.filtro_valores_widget = QtWidgets.QGroupBox("Filtrar por valores")
@@ -98,19 +86,12 @@ class Ui_Form(object):
         # Agregar la barra lateral al layout principal
         self.main_layout.addWidget(self.sidebar)
 
-        # Configuración del contenedor para la tabla
-        tabla_ancho = Form.width() - barra_lateral_ancho - 40  # Ajustando espacio total menos márgenes
-        tabla_alto = Form.height() - 40  # Ajustando espacio vertical menos márgenes
-
+        # Crear el contenedor para la tabla
         self.contenedortabla = QtWidgets.QWidget(Form)
-        self.contenedortabla.setGeometry(
-            QtCore.QRect(barra_lateral_ancho + 40, 20, tabla_ancho, tabla_alto)
-        )
-        self.contenedortabla.setObjectName("contenedortabla")
+        self.tabla_layout = QtWidgets.QVBoxLayout(self.contenedortabla)
 
         # Configuración de la tabla
         self.tabla = QtWidgets.QTableWidget(self.contenedortabla)
-        self.tabla.setGeometry(QtCore.QRect(0, 0, tabla_ancho, tabla_alto))
         self.tabla.setObjectName("tabla")
         self.tabla.setColumnCount(8)  # Configura el número de columnas
         self.tabla.setRowCount(20)  # Número inicial de filas
@@ -169,8 +150,14 @@ class Ui_Form(object):
                 item.setTextAlignment(QtCore.Qt.AlignCenter)  # Alinear texto al centro
                 self.tabla.setItem(row_position, column, item)
 
+        # Agregar la tabla al layout del contenedor de la tabla
+        self.tabla_layout.addWidget(self.tabla)
+
         # Agregar el contenedor de la tabla al layout principal
         self.main_layout.addWidget(self.contenedortabla)
+        # Ajustar el tamaño de la barra lateral y la tabla
+        self.sidebar.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Expanding)  # Fijo en ancho, expandible en alto
+        self.contenedortabla.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)  # Expandible en ambos
 
 
     def retranslateUi(self, Form):
