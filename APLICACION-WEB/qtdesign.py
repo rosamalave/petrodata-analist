@@ -1,5 +1,6 @@
 import sys
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5 import QtCore, QtGui, QtWidgets 
+from PyQt5.QtCore import QDate
 from pruebabackend import ConsolaDBBackend
 from bd.conexion_bd import base_ddatos
 
@@ -64,6 +65,13 @@ class Ui_Form(object):
         self.fecha_inicio.setCalendarPopup(True)
         self.fecha_fin = QtWidgets.QDateEdit()
         self.fecha_fin.setCalendarPopup(True)
+        # Establecer la fecha mínima y máxima
+        fecha_minima = QDate(2013, 1, 1)  # Cambia esto a la fecha mínima que desees
+        fecha_maxima = QDate.currentDate()  # Por ejemplo, la fecha actual
+        self.fecha_inicio.setMinimumDate(fecha_minima)
+        self.fecha_inicio.setMaximumDate(fecha_maxima)
+        self.fecha_fin.setMinimumDate(fecha_minima)
+        self.fecha_fin.setMaximumDate(fecha_maxima)
         self.filtrar_fechas_button = QtWidgets.QPushButton("Filtrar")
         self.filtrar_fechas_button.clicked.connect(self.filtro_por_fecha)
 
@@ -224,14 +232,11 @@ class Ui_Form(object):
         self.cargar_datos(datos_filtrados)
 
     def filtro_por_fecha(self):
-        fecha_inicio = self.fecha_inicio.date().toString("yyyy-MM-dd")
-        fecha_fin = self.fecha_fin.date().toString("yyyy-MM-dd")
-        if fecha_inicio > fecha_fin:
-            print("La fecha de inicio no puede ser mayor que la fecha final.")
-            return
-        datos_filtrados = self.conexion.filtrar_por_fecha(fecha_inicio, fecha_fin)
+        fecha_inicio = self.fecha_inicio.date().toString("dd-MM-yyyy")
+        fecha_fin = self.fecha_fin.date().toString("dd-MM-yyyy")
+        datos_filtrados = self.conexion.filtro_por_fecha(fecha_inicio, fecha_fin)
         print(f"Filtrado entre {fecha_inicio} y {fecha_fin}. Datos:")
-        self.mostrar_datos(datos_filtrados)
+        self.cargar_datos(datos_filtrados)
 
     def mostrar_datos(self, datos):
         self.tabla.setRowCount(0)  # Limpiar la tabla

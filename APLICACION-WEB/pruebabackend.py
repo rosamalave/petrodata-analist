@@ -138,6 +138,16 @@ class ConsolaDBBackend:
             # También eliminar de self.datos si está presente
             self.datos.pop(indice_superficial)
         self.cargar_datos()
+
+    def filtro_por_fecha(self, fecha_inicio, fecha_fin):
+        if 'produccion_c' in self.tabla:
+            datos_filtrados = self.filtrar_por_fecha_diaria(fecha_inicio, fecha_fin)
+
+        elif any(x in self.tabla for x in ['produccion_g', 'potencial', 'diferida']):
+            datos_filtrados = self.filtrar_por_fecha_mensual(fecha_inicio, fecha_fin)
+        
+        return datos_filtrados 
+
     def filtrar_por_fecha_diaria(self, fecha_inicio, fecha_fin):
         fecha_inicio = datetime.strptime(fecha_inicio, "%d-%m-%Y").date()
         fecha_fin = datetime.strptime(fecha_fin, "%d-%m-%Y").date()
