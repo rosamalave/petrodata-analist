@@ -29,19 +29,35 @@ class Ui_Form(object):
         # Crear el contenedor para filtrar por valores
         self.filtro_valores_widget = QtWidgets.QGroupBox("Filtrar por valores")
         self.filtro_valores_layout = QtWidgets.QVBoxLayout()
+
+        # Crear un QComboBox para seleccionar la columna a filtrar
+        self.columnafiltrar = QtWidgets.QComboBox()
+        # Obtener los campos numéricos excluyendo 'fecha' e 'id'
+        campos_numericos = [header for header in self.conexion.headers if header not in ['fecha', 'id']]
+        # Agregar los campos al QComboBox
+        self.columnafiltrar.addItems(campos_numericos)
+
         self.valor_min = QtWidgets.QSpinBox()
         self.valor_min.setRange(500, 20000)
         self.valor_max = QtWidgets.QSpinBox()
         self.valor_max.setRange(500, 20000)
-        self.filtrar_valores_button = QtWidgets.QPushButton("Filtrar")
-        self.filtrar_valores_button.clicked.connect(self.accion.filtro_por_valores)
 
+        self.filtrar_valores_button = QtWidgets.QPushButton("Filtrar")
+        # Conectar el botón de filtrar a un nuevo método que incluya la columna seleccionada
+        self.filtrar_valores_button.clicked.connect(lambda: self.accion.filtrar_tabla(self.columnafiltrar.currentIndex(), self.valor_min.value(),self.valor_max.value()))
+
+        # Agregar widgets al layout
+        self.filtro_valores_layout.addWidget(QtWidgets.QLabel("Seleccionar columna:"))
+        self.filtro_valores_layout.addWidget(self.columnafiltrar)
         self.filtro_valores_layout.addWidget(QtWidgets.QLabel("Valor mínimo:"))
         self.filtro_valores_layout.addWidget(self.valor_min)
         self.filtro_valores_layout.addWidget(QtWidgets.QLabel("Valor máximo:"))
         self.filtro_valores_layout.addWidget(self.valor_max)
         self.filtro_valores_layout.addWidget(self.filtrar_valores_button)
         self.filtro_valores_widget.setLayout(self.filtro_valores_layout)
+
+        # Agregar el widget de filtro a la barra lateral
+        self.sidebar_layout.addWidget(self.filtro_valores_widget)
 
         # Crear el contenedor para filtrar por fechas
         self.filtro_fechas_widget = QtWidgets.QGroupBox("Filtrar por fechas")
@@ -164,6 +180,10 @@ class Ui_Form(object):
         _translate = QtCore.QCoreApplication.translate
         Form.setWindowTitle(_translate("Form", "Form"))
         self.tabla.setSortingEnabled(True)
+
+
+    def obtener_indice(self, index):
+        return index
 
 if __name__ == "__main__":
     # Crear una instancia de QApplication
