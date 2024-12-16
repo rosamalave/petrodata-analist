@@ -1,12 +1,10 @@
 import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
 from pruebabackend import ConsolaDBBackend
-from main2 import Main
 from bd.conexion_bd import base_ddatos
 
 class Ui_Form(object):
     def __init__(self):
-        self.accion=Main()
         self.conexion= ConsolaDBBackend(base_ddatos(), "public", "produccion_c")
 
     def setupUi(self, Form):
@@ -32,19 +30,19 @@ class Ui_Form(object):
 
         # Crear un QComboBox para seleccionar la columna a filtrar
         self.columnafiltrar = QtWidgets.QComboBox()
-        # Obtener los campos numéricos excluyendo 'fecha' e 'id'
+        # Obtener los headers excluyendo 'fecha' e 'id'
         campos_numericos = [header for header in self.conexion.headers if header not in ['fecha', 'id']]
         # Agregar los campos al QComboBox
         self.columnafiltrar.addItems(campos_numericos)
 
         self.valor_min = QtWidgets.QSpinBox()
-        self.valor_min.setRange(500, 20000)
+        self.valor_min.setRange(0, 20000)
         self.valor_max = QtWidgets.QSpinBox()
-        self.valor_max.setRange(500, 20000)
+        self.valor_max.setRange(0, 20000)
 
         self.filtrar_valores_button = QtWidgets.QPushButton("Filtrar")
         # Conectar el botón de filtrar a un nuevo método que incluya la columna seleccionada
-        self.filtrar_valores_button.clicked.connect(lambda: self.accion.filtrar_tabla(self.columnafiltrar.currentIndex(), self.valor_min.value(),self.valor_max.value()))
+        self.filtrar_valores_button.clicked.connect(lambda: self.filtro_por_valores(self.columnafiltrar.currentText(), self.valor_min.value(),self.valor_max.value()))
 
         # Agregar widgets al layout
         self.filtro_valores_layout.addWidget(QtWidgets.QLabel("Seleccionar columna:"))
@@ -67,7 +65,7 @@ class Ui_Form(object):
         self.fecha_fin = QtWidgets.QDateEdit()
         self.fecha_fin.setCalendarPopup(True)
         self.filtrar_fechas_button = QtWidgets.QPushButton("Filtrar")
-        self.filtrar_fechas_button.clicked.connect(self.accion.filtro_por_fecha)
+        self.filtrar_fechas_button.clicked.connect(self.filtro_por_fecha)
 
         self.filtro_fechas_layout.addWidget(QtWidgets.QLabel("Fecha inicio:"))
         self.filtro_fechas_layout.addWidget(self.fecha_inicio)
@@ -82,17 +80,17 @@ class Ui_Form(object):
 
         # Conectar el botón de agregar fila
         self.aggfila = QtWidgets.QPushButton("Agregar fila")
-        self.aggfila.clicked.connect(self.accion.agregar_fila)
+        self.aggfila.clicked.connect(self.agregar_fila)
         self.sidebar_layout.addWidget(self.aggfila)
 
         # Conectar el botón de editar fila
         self.editar_fila_button = QtWidgets.QPushButton("Editar fila")
-        self.editar_fila_button.clicked.connect(self.accion.editar_fila)
+        self.editar_fila_button.clicked.connect(self.editar_fila)
         self.sidebar_layout.addWidget(self.editar_fila_button)
 
         # Botón para guardar cambios
         self.guardar_button = QtWidgets.QPushButton("Guardar cambios")
-        self.guardar_button.clicked.connect(self.accion.guardar_cambios)
+        self.guardar_button.clicked.connect(self.guardar_cambios)
         self.sidebar_layout.addWidget(self.guardar_button)
         self.guardar_button.setVisible(False)  # Ocultar inicialmente
 
@@ -157,8 +155,22 @@ class Ui_Form(object):
         header = self.tabla.horizontalHeader()
         header.setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
         
-        # Cargar los datos en la tabla
-        for fila in self.conexion.datos:
+        self.cargar_datos(self.conexion.datos)
+
+
+    def retranslateUi(self, Form):
+        _translate = QtCore.QCoreApplication.translate
+        Form.setWindowTitle(_translate("Form", "Form"))
+        self.tabla.setSortingEnabled(True)
+
+
+    def obtener_indice(self, index):
+        return index
+
+    def cargar_datos(self,datos):
+        self.tabla.setRowCount(0)
+                # Cargar los datos en la tabla
+        for fila in datos:
             row_position = self.tabla.rowCount()
             self.tabla.insertRow(row_position)
             for column, value in enumerate(fila):
@@ -175,15 +187,65 @@ class Ui_Form(object):
         self.sidebar.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Expanding)  # Fijo en ancho, expandible en alto
         self.contenedortabla.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)  # Expandible en ambos
 
+    def agregar_fila(self):
+        self.conexion.agregar_fila()
+        print("\nFila vacía agregada.")
+        self.cargar_datos()  # Recargar datos después de agregar
 
-    def retranslateUi(self, Form):
-        _translate = QtCore.QCoreApplication.translate
-        Form.setWindowTitle(_translate("Form", "Form"))
-        self.tabla.setSortingEnabled(True)
+    def editar_fila(self):
+        self.tabla.setEditTriggers(QtWidgets.QAbstractItemView.EditKeyPressed)  # Activar edición
+        self.guardar_button.setVisible(True)  # Mostrar botón de guardar
+        self.editar_fila_button.setVisible(False)  # Ocultar botón de editar
+
+        # Obtener el índice de la fila seleccionada
+        self.indice_seleccionado = self.tabla.currentRow()
+        if self.indice_seleccionado != -1:
+            self.tabla.selectRow(self.indice_seleccionado)  # Seleccionar la fila
+
+    def guardar_cambios(self):
+        self.tabla.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)  # Desactivar edición
+        self.guardar_button.setVisible(False)  # Ocultar botón de guardar
+        self.editar_fila_button.setVisible(True)  # Mostrar botón de editar
+
+        # Guardar cambios en la fila seleccionada
+        if self.indice_seleccionado is not None:
+            cambios = {}
+            for column in range(self.tabla.columnCount()):
+                nuevo_valor = self.tabla.item(self.indice_seleccionado, column).text()
+                cambios[column] = nuevo_valor
+            self.conexion.editar_fila(self.indice_seleccionado, cambios)
+            print(f"Cambios guardados en la fila {self.indice_seleccionado}.")
+            self.cargar_datos()  # Recargar datos después de guardar
+
+    def filtro_por_valores(self, header, valor_min, valor_max):
+
+        datos_filtrados = self.conexion.filtrar_por_valores(header,valor_min,valor_max)
+        print(f"Filtrado entre {valor_min} y {valor_max}. Datos:")
+        self.cargar_datos(datos_filtrados)
+
+    def filtro_por_fecha(self):
+        fecha_inicio = self.fecha_inicio.date().toString("yyyy-MM-dd")
+        fecha_fin = self.fecha_fin.date().toString("yyyy-MM-dd")
+        if fecha_inicio > fecha_fin:
+            print("La fecha de inicio no puede ser mayor que la fecha final.")
+            return
+        datos_filtrados = self.conexion.filtrar_por_fecha(fecha_inicio, fecha_fin)
+        print(f"Filtrado entre {fecha_inicio} y {fecha_fin}. Datos:")
+        self.mostrar_datos(datos_filtrados)
+
+    def mostrar_datos(self, datos):
+        self.tabla.setRowCount(0)  # Limpiar la tabla
+        for fila in datos:
+            row_position = self.tabla.rowCount()
+            self.tabla.insertRow(row_position)
+            for column, value in enumerate(fila):
+                self.tabla.setItem(row_position, column, QtWidgets.QTableWidgetItem(str(value)))
+
+    def salir(self):
+        print("Saliendo del programa.")
+        sys.exit()
 
 
-    def obtener_indice(self, index):
-        return index
 
 if __name__ == "__main__":
     # Crear una instancia de QApplication

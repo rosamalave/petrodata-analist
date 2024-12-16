@@ -24,9 +24,9 @@ class ConsolaDBBackend:
         cursor = self.conexion.conn.cursor()
         self.headers = []
         cadenanombres = self.conexion.header(cursor, self.headers, self.esquema, self.tabla)
-        cursor.execute(f"SELECT {cadenanombres} FROM {self.esquema}.{self.tabla} ORDER BY id_{self.tabla} ASC LIMIT 10")
+        cursor.execute(f"SELECT {cadenanombres} FROM {self.esquema}.{self.tabla} ORDER BY id_{self.tabla} ASC LIMIT 100")
         self.datos = cursor.fetchall()
-        cursor.execute(f"SELECT * FROM {self.esquema}.{self.tabla} ORDER BY id_{self.tabla} ASC LIMIT 10")
+        cursor.execute(f"SELECT * FROM {self.esquema}.{self.tabla} ORDER BY id_{self.tabla} ASC LIMIT 100")
         self.datosall = cursor.fetchall()
         cursor.close()
 
@@ -279,7 +279,7 @@ class ConsolaDBFrontend:
         try:
             campo_seleccionado = campos_numericos[int(opcion) - 1]
             valor_min = input(f"Ingrese el valor mínimo para {campo_seleccionado}: ")
-            valor_max = input(f"In grese el valor máximo para {campo_seleccionado}: ")
+            valor_max = input(f"Ingrese el valor máximo para {campo_seleccionado}: ")
 
             datos_filtrados = self.backend.filtrar_por_valores(campo_seleccionado, valor_min, valor_max)
             print(f"Filtrado entre {valor_min} y {valor_max}. Datos:")
