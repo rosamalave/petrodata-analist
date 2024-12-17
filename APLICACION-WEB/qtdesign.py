@@ -214,9 +214,16 @@ class Ui_Form(object):
         self.reiniciar_interfaz()
 
     def eliminar_fila(self):
-        indice=self.tabla.currentRow()
-        pass
-    
+        self.indice_seleccionado=self.tabla.currentRow()
+        if self.indice_seleccionado != -1:
+            try:
+                self.conexion.eliminar_fila(self.indice_seleccionado)  # Llamada al método del backend
+                print("Fila eliminada.")
+            except (IndexError, ValueError) as e:
+                print(f"Error: {e}")
+        self.reiniciar_interfaz()
+        self.cargar_datos(self.conexion.datos)
+        
     def cargar_datos(self,datos):
         self.tabla.setRowCount(0)
                 # Cargar los datos en la tabla
@@ -289,11 +296,15 @@ class Ui_Form(object):
                 fila_actual.append(nuevo_valor)
                 cambios[column] = nuevo_valor  # Guardar el nuevo valor en el diccionario de cambios
 
-            # Llamar al método editar_fila para guardar los cambios en la base de datos
-            self.conexion.agregar_datos(self.conexion.editar_fila, self.indice_seleccionado, cambios)
+            if self.indice_seleccionado not in self.conexion.nuevas_filas_indices:
+                # Llamar al método editar_fila para guardar los cambios en la base de datos
+                self.conexion.agregar_datos(self.conexion.editar_fila, self.indice_seleccionado, cambios)
 
+                
+            else:
+                self.conexion.agregar_datos(self.conexion.insertar_fila, self.indice_seleccionado, cambios)
+                self.conexion.nuevas_filas_indices.remove(self.indice_seleccionado)
             print(f"Cambios guardados en la fila {self.indice_seleccionado}.")
-
             # Recargar datos después de guardar
             self.cargar_datos(self.conexion.datos)
 

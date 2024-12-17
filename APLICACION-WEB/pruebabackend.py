@@ -24,9 +24,9 @@ class ConsolaDBBackend:
         cursor = self.conexion.conn.cursor()
         self.headers = []
         cadenanombres = self.conexion.header(cursor, self.headers, self.esquema, self.tabla)
-        cursor.execute(f"SELECT {cadenanombres} FROM {self.esquema}.{self.tabla} ORDER BY id_{self.tabla} ASC LIMIT 100")
+        cursor.execute(f"SELECT {cadenanombres} FROM {self.esquema}.{self.tabla} ORDER BY id_{self.tabla} DESC LIMIT 100")
         self.datos = cursor.fetchall()
-        cursor.execute(f"SELECT * FROM {self.esquema}.{self.tabla} ORDER BY id_{self.tabla} ASC LIMIT 100")
+        cursor.execute(f"SELECT * FROM {self.esquema}.{self.tabla} ORDER BY id_{self.tabla} DESC LIMIT 100")
         self.datosall = cursor.fetchall()
         cursor.close()
 
