@@ -354,7 +354,7 @@ class ControlesPaginacionYPeriodicidad(QtWidgets.QWidget):
         # Crear botón de cantidad (QComboBox)
         self.etiqueta_cantidad = QtWidgets.QLabel("Seleccionar cantidad:")
         self.combo_cantidad = QtWidgets.QComboBox()
-        self.combo_cantidad.addItems(["1", "2", "3", "4"])  # Predeterminado para anual
+        self.combo_cantidad.addItems([str(i) for i in range(10, 101)])  # Predeterminado para anual
         self.combo_cantidad.currentIndexChanged.connect(self.on_cantidad_change)
         # Crear botón de paginación
         self.boton_paginacion = QtWidgets.QPushButton("Paginar")
@@ -402,7 +402,6 @@ class ControlesPaginacionYPeriodicidad(QtWidgets.QWidget):
         self.boton_paginacion_activado = False  # Variable para controlar si se ha activado el botón de paginación
         self.actualizar_botones_paginacion()
 
-    # Actualizar los textos de los botones de las páginas
     def paginar(self):
         self.boton_paginacion_activado = True  # Marcar que se ha activado el botón de paginación
         tamanos_paginas = self.calcular_paginacion(self.combo_periodicidad.currentText(), int(self.combo_cantidad.currentText()))
@@ -412,7 +411,8 @@ class ControlesPaginacionYPeriodicidad(QtWidgets.QWidget):
     
         # Calcular el índice de inicio para la página actual
         for i in range(self.pagina_actual - 1):
-            inicio += tamanos_paginas[i]  # Sumar el tamaño de las páginas anteriores
+            if i < len(tamanos_paginas):
+                inicio += tamanos_paginas[i]  # Sumar el tamaño de las páginas anteriores
 
         # Obtener el número de filas para la página actual
         if self.pagina_actual - 1 < len(tamanos_paginas):
@@ -434,6 +434,13 @@ class ControlesPaginacionYPeriodicidad(QtWidgets.QWidget):
         self.boton_pagina_actual.setText(str(self.pagina_actual))
         self.boton_pagina_siguiente.setText(f"{self.pagina_actual + 1}")
 
+        # Mostrar botones de paginación solo si el botón de paginación ha sido activado y no es "Todos"
+        if self.boton_paginacion_activado:
+            for i in range(self.layout_paginacion.count()):
+                self.layout_paginacion.itemAt(i).widget().setVisible(True)  # Hacer visibles los widgets en el layout
+        else:
+            for i in range(self.layout_paginacion.count()):
+                self.layout_paginacion.itemAt(i).widget().setVisible(False)  # Ocultar los widgets en el layout
         # Ocultar o mostrar botones según la página actual y si se ha activado el botón de paginación
         if self.pagina_actual == 1:
             self.boton_2_paginas_menos.setVisible(False)
@@ -443,33 +450,39 @@ class ControlesPaginacionYPeriodicidad(QtWidgets.QWidget):
             self.boton_pagina_anterior.setText(f"{self.pagina_actual - 1}")  # Actualizar el texto del botón anterior
             self.boton_pagina_anterior.setVisible(True)
 
-        # Mostrar botones de paginación solo si el botón de paginación ha sido activado y no es "Todos"
-        if self.boton_paginacion_activado and self.combo_periodicidad.currentText() != "Todos":
-            for i in range(self.layout_paginacion.count()):
-                self.layout_paginacion.itemAt(i).widget().setVisible(True)  # Hacer visibles los widgets en el layout
-        else:
-            for i in range(self.layout_paginacion.count()):
-                self.layout_paginacion.itemAt(i).widget().setVisible(False)  # Ocultar los widgets en el layout
+            tamano_paginas = self.calcular_paginacion(self.combo_periodicidad.currentText(), int(self.combo_cantidad.currentText()))
+            if self.pagina_actual==len(tamano_paginas):   
+                self.boton_pagina_siguiente.setVisible(False)  # Actualizar el texto del botón anterior
+                self.boton_2_paginas_mas.setVisible(False)
 
     def ir_a_dos_paginas_anterior(self):
         if self.pagina_actual > 2:
-            self.pagina_actual -= 2
+            self.pagina_actual -= 2  # Decrementar la página actual en 2
+        elif self.pagina_actual == 2:
+            self.pagina_actual = 1  # Si estamos en la segunda página, ir a la primera
         else:
             self.pagina_actual = 1  # No permitir que la página sea menor que 1
-        self.actualizar_botones_paginacion()
+        self.paginar()  # Llama al método paginar para actualizar la tabla
 
     def ir_a_pagina_anterior(self):
         if self.pagina_actual > 1:
             self.pagina_actual -= 1
+        self.paginar()    
         self.actualizar_botones_paginacion()
 
     def ir_a_pagina_siguiente(self):
         self.pagina_actual += 1
+        self.paginar()
         self.actualizar_botones_paginacion()
 
     def ir_a_dos_paginas_siguiente(self):
-        self.pagina_actual += 2
-        self.actualizar_botones_paginacion()
+        tamanos_paginas = self.calcular_paginacion(self.combo_periodicidad.currentText(), int(self.combo_cantidad.currentText()))
+    
+        if self.pagina_actual < len(tamanos_paginas) - 1:  # Si hay más de una página
+            self.pagina_actual += 2  # Incrementar la página actual en 2
+        else:
+            self.pagina_actual = len(tamanos_paginas)  # Ir a la última página si no hay suficientes páginas
+        self.paginar()  # Llama al método paginar para actualizar la tabla
         
     # Métodos vacíos como marcadores de posición para las acciones de los botones
     def on_periodicidad_change(self):
@@ -488,28 +501,45 @@ class ControlesPaginacionYPeriodicidad(QtWidgets.QWidget):
 
     def calcular_paginacion(self, periodicidad, cantidad):
         """
-        Calcula la paginación de los datos según la periodicidad (anual o mensual) y la cantidad de periodos por página.
+        Calcula la paginación de los datos según la periodicidad (anual, mensual o todos) y la cantidad de filas por página.
 
         Args:
-            periodicidad (str): La periodicidad para agrupar los datos, "anual" o "mensual".
-            cantidad (int): El número de periodos por página (1 a 4).
-            vector_consulta (list of tuples): Lista de datos donde cada fila incluye una columna de fecha (datetime.date).
-            headers (list of str): Lista con los nombres de las columnas que incluye "fecha".
+            periodicidad (str): La periodicidad para agrupar los datos, "anual", "mensual" o "todos".
+            cantidad (int): El número de filas por página (1 a 4 para anual y mensual, o el número total de filas para todos).
 
         Returns:
             list: Una lista donde cada elemento representa el tamaño de cada página (número de filas).
         """
-        if periodicidad not in ["Todos", "Anual","Mensual"]:
-            raise ValueError("Periodicidad no válida. Use 'anual' o 'mensual'.")
+        if periodicidad not in ["Todos", "Anual", "Mensual"]:
+            raise ValueError("Periodicidad no válida. Use 'anual', 'mensual' o 'todos'.")
+
+        if periodicidad == "Todos":
+            # Para "Todos", la cantidad determina cuántas filas habrá por página
+            tamanos_paginas = []
+            total_filas = len(self.conexion.datos)  # Total de filas en los datos
+
+            # Calcular el número de páginas
+            num_paginas = total_filas // cantidad  # Número completo de páginas
+            resto = total_filas % cantidad  # Filas restantes para la última página
+
+            # Agregar el tamaño de cada página
+            for _ in range(num_paginas):
+                tamanos_paginas.append(cantidad)  # Agregar páginas completas
+
+            if resto > 0:
+                tamanos_paginas.append(resto)  # Agregar la última página con las filas restantes
+
+            return tamanos_paginas
+
         if not (1 <= cantidad <= 4):
-            raise ValueError("Cantidad debe estar entre 1 y 4.")
+            raise ValueError("Cantidad debe estar entre 1 y 4 para 'anual' y 'mensual'.")
 
         # Índice de la columna "fecha"
         fecha_index = self.conexion.headers.index("fecha")
-    
+
         # Agrupar los datos por periodo
         conteo_por_periodo = defaultdict(int)
-    
+
         for fila in self.conexion.datos:
             fecha = fila[fecha_index]
             if periodicidad == "Anual":
@@ -517,20 +547,19 @@ class ControlesPaginacionYPeriodicidad(QtWidgets.QWidget):
             elif periodicidad == "Mensual":
                 clave_periodo = (fecha.year, fecha.month)
             conteo_por_periodo[clave_periodo] += 1
-    
+
         # Convertir los conteos por periodo a una lista (respetando el orden original)
         conteo_filas = list(conteo_por_periodo.values())
-    
+
         # Agrupar por cantidad para calcular el tamaño de las páginas
         tamanos_paginas = []
         acumulador = 0
-    
+
         for i, conteo in enumerate(conteo_filas):
             acumulador += conteo
             if (i + 1) % cantidad == 0 or i == len(conteo_filas) - 1:
                 tamanos_paginas.append(acumulador)
                 acumulador = 0
-
         return tamanos_paginas
 
 if __name__ == "__main__":
