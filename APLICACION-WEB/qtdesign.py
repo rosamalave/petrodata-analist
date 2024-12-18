@@ -24,7 +24,7 @@ class Ui_Form(object):
         # Crear un contenedor para la barra lateral
         self.sidebar = QtWidgets.QWidget(Form)  # Asegúrate de crear el widget de la barra lateral aquí
         self.sidebar_layout = QtWidgets.QVBoxLayout(self.sidebar)  # Crear el layout y asignarlo al widget
-
+        
         # Establecer un tamaño fijo para la barra lateral (20% del ancho total)
         self.sidebar.setFixedWidth(int(Form.width() * 0.20))  # Ajusta el ancho según sea necesario
 
@@ -360,6 +360,11 @@ class ControlesPaginacionYPeriodicidad(QtWidgets.QWidget):
         self.boton_paginacion = QtWidgets.QPushButton("Paginar")
         self.boton_paginacion.clicked.connect(self.paginar)  # Conectar al método
 
+        # Crear botón para eliminar paginacion
+        self.boton_deshacer_paginacion = QtWidgets.QPushButton("Deshacer Paginacion")
+        self.boton_deshacer_paginacion.clicked.connect(self.deshacer_paginacion)  # Conectar al método
+        self.boton_deshacer_paginacion.setVisible(False)  # Inicialmente oculto
+
         # Crear controles de paginación
         self.layout_paginacion = QtWidgets.QHBoxLayout()
 
@@ -396,6 +401,7 @@ class ControlesPaginacionYPeriodicidad(QtWidgets.QWidget):
         self.layout.addWidget(self.combo_cantidad)
         self.layout.addLayout(self.layout_paginacion)
         self.layout.addWidget(self.boton_paginacion)
+        self.layout.addWidget(self.boton_deshacer_paginacion)
 
         # Inicializar la página actual
         self.pagina_actual = 1
@@ -403,7 +409,8 @@ class ControlesPaginacionYPeriodicidad(QtWidgets.QWidget):
         self.actualizar_botones_paginacion()
 
     def paginar(self):
-        self.boton_paginacion_activado = True  # Marcar que se ha activado el botón de paginación
+        self.boton_paginacion_activado = True
+        self.boton_deshacer_paginacion.setVisible(True)  
         tamanos_paginas = self.calcular_paginacion(self.combo_periodicidad.currentText(), int(self.combo_cantidad.currentText()))
     
         # Inicializar el índice de inicio para la página actual
@@ -454,6 +461,15 @@ class ControlesPaginacionYPeriodicidad(QtWidgets.QWidget):
             if self.pagina_actual==len(tamano_paginas):   
                 self.boton_pagina_siguiente.setVisible(False)  # Actualizar el texto del botón anterior
                 self.boton_2_paginas_mas.setVisible(False)
+
+    def deshacer_paginacion(self):
+        # Lógica para cargar todos los datos sin segmentación
+        self.boton_paginacion_activado = False  # Desactivar el botón de paginación
+        self.boton_deshacer_paginacion.setVisible(False)  # Ocultar el botón de eliminar segmentación
+        self.ui.cargar_datos(self.conexion.datos)  # Método para cargar todos los datos
+        self.ui.reiniciar_interfaz()
+        self.pagina_actual = 1
+        self.actualizar_botones_paginacion()
 
     def ir_a_dos_paginas_anterior(self):
         if self.pagina_actual > 2:
