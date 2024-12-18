@@ -1,4 +1,6 @@
 import sys
+import datetime
+from collections import defaultdict
 from PyQt5 import QtCore, QtGui, QtWidgets 
 from PyQt5.QtCore import QDate
 from pruebabackend import ConsolaDBBackend
@@ -25,6 +27,9 @@ class Ui_Form(object):
 
         # Establecer un tamaño fijo para la barra lateral (20% del ancho total)
         self.sidebar.setFixedWidth(int(Form.width() * 0.20))  # Ajusta el ancho según sea necesario
+
+        self.controles_paginacion = ControlesPaginacionYPeriodicidad(self, Form)
+        self.sidebar_layout.addWidget(self.controles_paginacion)
 
         # Crear el contenedor para filtrar por valores
         self.filtro_valores_widget = QtWidgets.QGroupBox("Filtrar por valores")
@@ -332,6 +337,201 @@ class Ui_Form(object):
         sys.exit()
 
 
+class ControlesPaginacionYPeriodicidad(QtWidgets.QWidget):
+    def __init__(self, ui_form_instance, parent=None):
+        super(ControlesPaginacionYPeriodicidad, self).__init__(parent)
+        self.ui= ui_form_instance
+        self.conexion= ConsolaDBBackend(base_ddatos(), "public", "produccion_c")
+        # Layout para los controles
+        self.layout = QtWidgets.QVBoxLayout(self)
+
+        # Crear botón de periodicidad (QComboBox)
+        self.etiqueta_periodicidad = QtWidgets.QLabel("Seleccionar periodicidad:")
+        self.combo_periodicidad = QtWidgets.QComboBox()
+        self.combo_periodicidad.addItems(["Todos", "Anual", "Mensual"])
+        self.combo_periodicidad.currentIndexChanged.connect(self.on_periodicidad_change)
+
+        # Crear botón de cantidad (QComboBox)
+        self.etiqueta_cantidad = QtWidgets.QLabel("Seleccionar cantidad:")
+        self.combo_cantidad = QtWidgets.QComboBox()
+        self.combo_cantidad.addItems(["1", "2", "3", "4"])  # Predeterminado para anual
+        self.combo_cantidad.currentIndexChanged.connect(self.on_cantidad_change)
+        # Crear botón de paginación
+        self.boton_paginacion = QtWidgets.QPushButton("Paginar")
+        self.boton_paginacion.clicked.connect(self.paginar)  # Conectar al método
+
+        # Crear controles de paginación
+        self.layout_paginacion = QtWidgets.QHBoxLayout()
+
+        # Botones de paginación
+        self.boton_2_paginas_menos = QtWidgets.QPushButton("<<")
+        self.boton_2_paginas_menos.clicked.connect(self.ir_a_dos_paginas_anterior)
+
+        self.boton_pagina_anterior = QtWidgets.QPushButton("n-1")
+        self.boton_pagina_anterior.clicked.connect(self.ir_a_pagina_anterior)
+
+        self.boton_pagina_actual = QtWidgets.QPushButton("n")  # Inicialmente en la página actual
+        self.boton_pagina_actual.setEnabled(False)  # Desactivar el botón para que no sea clickeable
+
+        self.boton_pagina_siguiente = QtWidgets.QPushButton("n+1")
+        self.boton_pagina_siguiente.clicked.connect(self.ir_a_pagina_siguiente)
+
+        self.boton_2_paginas_mas = QtWidgets.QPushButton(">>")
+        self.boton_2_paginas_mas.clicked.connect(self.ir_a_dos_paginas_siguiente)
+
+        # Agregar botones al layout de paginación en el orden especificado
+        self.layout_paginacion.addWidget(self.boton_2_paginas_menos)
+        self.layout_paginacion.addWidget(self.boton_pagina_anterior)
+        self.layout_paginacion.addWidget(self.boton_pagina_actual)
+        self.layout_paginacion.addWidget(self.boton_pagina_siguiente)
+        self.layout_paginacion.addWidget(self.boton_2_paginas_mas)
+
+        # Agregar el layout de paginación al layout principal
+        self.layout.addLayout(self.layout_paginacion)
+
+        # Agregar widgets al layout principal
+        self.layout.addWidget(self.etiqueta_periodicidad)
+        self.layout.addWidget(self.combo_periodicidad)
+        self.layout.addWidget(self.etiqueta_cantidad)
+        self.layout.addWidget(self.combo_cantidad)
+        self.layout.addLayout(self.layout_paginacion)
+        self.layout.addWidget(self.boton_paginacion)
+
+        # Inicializar la página actual
+        self.pagina_actual = 1
+        self.boton_paginacion_activado = False  # Variable para controlar si se ha activado el botón de paginación
+        self.actualizar_botones_paginacion()
+
+    # Actualizar los textos de los botones de las páginas
+    def paginar(self):
+        self.boton_paginacion_activado = True  # Marcar que se ha activado el botón de paginación
+        tamanos_paginas = self.calcular_paginacion(self.combo_periodicidad.currentText(), int(self.combo_cantidad.currentText()))
+    
+        # Inicializar el índice de inicio para la página actual
+        inicio = 0
+    
+        # Calcular el índice de inicio para la página actual
+        for i in range(self.pagina_actual - 1):
+            inicio += tamanos_paginas[i]  # Sumar el tamaño de las páginas anteriores
+
+        # Obtener el número de filas para la página actual
+        if self.pagina_actual - 1 < len(tamanos_paginas):
+            fin = inicio + tamanos_paginas[self.pagina_actual - 1]
+        else:
+            fin = inicio  # Si no hay más páginas, no se debe exceder el rango
+
+        # Slicing de los datos para obtener solo las filas de la página actual
+        datos_pagina_actual = self.conexion.datos[inicio:fin]
+
+        # Actualizar la tabla con los datos de la página actual
+        self.ui.cargar_datos(datos_pagina_actual)
+        self.ui.reiniciar_interfaz()
+
+        # Actualizar los botones de paginación
+        self.actualizar_botones_paginacion()
+
+    def actualizar_botones_paginacion(self):
+        self.boton_pagina_actual.setText(str(self.pagina_actual))
+        self.boton_pagina_siguiente.setText(f"{self.pagina_actual + 1}")
+
+        # Ocultar o mostrar botones según la página actual y si se ha activado el botón de paginación
+        if self.pagina_actual == 1:
+            self.boton_2_paginas_menos.setVisible(False)
+            self.boton_pagina_anterior.setVisible(False)
+        else:
+            self.boton_2_paginas_menos.setVisible(True)
+            self.boton_pagina_anterior.setText(f"{self.pagina_actual - 1}")  # Actualizar el texto del botón anterior
+            self.boton_pagina_anterior.setVisible(True)
+
+        # Mostrar botones de paginación solo si el botón de paginación ha sido activado y no es "Todos"
+        if self.boton_paginacion_activado and self.combo_periodicidad.currentText() != "Todos":
+            for i in range(self.layout_paginacion.count()):
+                self.layout_paginacion.itemAt(i).widget().setVisible(True)  # Hacer visibles los widgets en el layout
+        else:
+            for i in range(self.layout_paginacion.count()):
+                self.layout_paginacion.itemAt(i).widget().setVisible(False)  # Ocultar los widgets en el layout
+
+    def ir_a_dos_paginas_anterior(self):
+        if self.pagina_actual > 2:
+            self.pagina_actual -= 2
+        else:
+            self.pagina_actual = 1  # No permitir que la página sea menor que 1
+        self.actualizar_botones_paginacion()
+
+    def ir_a_pagina_anterior(self):
+        if self.pagina_actual > 1:
+            self.pagina_actual -= 1
+        self.actualizar_botones_paginacion()
+
+    def ir_a_pagina_siguiente(self):
+        self.pagina_actual += 1
+        self.actualizar_botones_paginacion()
+
+    def ir_a_dos_paginas_siguiente(self):
+        self.pagina_actual += 2
+        self.actualizar_botones_paginacion()
+        
+    # Métodos vacíos como marcadores de posición para las acciones de los botones
+    def on_periodicidad_change(self):
+        if self.combo_periodicidad.currentText() == "Anual":
+            self.combo_cantidad.clear()
+            self.combo_cantidad.addItems(["1", "2", "3", "4"])  # Opciones para anual
+        elif self.combo_periodicidad.currentText() == "Mensual":
+            self.combo_cantidad.clear()
+            self.combo_cantidad.addItems(["1", "2", "3"])  # Opciones para mensual
+        elif self.combo_periodicidad.currentText() == "Todos":
+            self.combo_cantidad.clear()
+            self.combo_cantidad.addItems([str(i) for i in range(10, 101)])  # Números del 10 al 100
+
+    def on_cantidad_change(self):
+        pass  # Implementar lógica para el cambio de cantidad
+
+    def calcular_paginacion(self, periodicidad, cantidad):
+        """
+        Calcula la paginación de los datos según la periodicidad (anual o mensual) y la cantidad de periodos por página.
+
+        Args:
+            periodicidad (str): La periodicidad para agrupar los datos, "anual" o "mensual".
+            cantidad (int): El número de periodos por página (1 a 4).
+            vector_consulta (list of tuples): Lista de datos donde cada fila incluye una columna de fecha (datetime.date).
+            headers (list of str): Lista con los nombres de las columnas que incluye "fecha".
+
+        Returns:
+            list: Una lista donde cada elemento representa el tamaño de cada página (número de filas).
+        """
+        if periodicidad not in ["Todos", "Anual","Mensual"]:
+            raise ValueError("Periodicidad no válida. Use 'anual' o 'mensual'.")
+        if not (1 <= cantidad <= 4):
+            raise ValueError("Cantidad debe estar entre 1 y 4.")
+
+        # Índice de la columna "fecha"
+        fecha_index = self.conexion.headers.index("fecha")
+    
+        # Agrupar los datos por periodo
+        conteo_por_periodo = defaultdict(int)
+    
+        for fila in self.conexion.datos:
+            fecha = fila[fecha_index]
+            if periodicidad == "Anual":
+                clave_periodo = fecha.year
+            elif periodicidad == "Mensual":
+                clave_periodo = (fecha.year, fecha.month)
+            conteo_por_periodo[clave_periodo] += 1
+    
+        # Convertir los conteos por periodo a una lista (respetando el orden original)
+        conteo_filas = list(conteo_por_periodo.values())
+    
+        # Agrupar por cantidad para calcular el tamaño de las páginas
+        tamanos_paginas = []
+        acumulador = 0
+    
+        for i, conteo in enumerate(conteo_filas):
+            acumulador += conteo
+            if (i + 1) % cantidad == 0 or i == len(conteo_filas) - 1:
+                tamanos_paginas.append(acumulador)
+                acumulador = 0
+
+        return tamanos_paginas
 
 if __name__ == "__main__":
     # Crear una instancia de QApplication
