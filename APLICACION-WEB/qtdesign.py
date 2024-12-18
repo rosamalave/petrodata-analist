@@ -42,6 +42,7 @@ class Ui_Form(object):
         # Agregar los campos al QComboBox
         self.columnafiltrar.addItems(campos_numericos)
 
+
         self.valor_min = QtWidgets.QSpinBox()
         self.valor_min.setRange(0, 20000)
         self.valor_max = QtWidgets.QSpinBox()
