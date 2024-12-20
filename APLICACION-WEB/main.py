@@ -32,10 +32,12 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         # Aquí puedes agregar la lógica que deseas ejecutar al cerrar la aplicación
-        
+        self.login_view.cerrarsesion()
         # Acepta el cierre de la ventana
         event.accept()    
+        
 if __name__ == "__main__":
+
     app = QApplication(sys.argv)
     main_window = MainWindow()
     main_window.show()

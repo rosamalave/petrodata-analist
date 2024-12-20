@@ -12,6 +12,44 @@ class base_ddatos():
 
         #objeto de tipo conexion que guarda metodos: cursor, commit, rollback, close
         self.conn = psycopg2.connect(host="localhost", database="juninpruebas", user="postgres", password="Junindata" )
+        
+
+    def verificariniciarsesion (self,usuario,contrasena):
+        cursor = self.conn.cursor()
+        # Consulta para verificar si el usuario y la contraseña coinciden
+        consulta = f"SELECT * FROM public2.usuario WHERE usuario = %s AND passwordd = %s"
+        cursor.execute(consulta, (usuario, contrasena))
+        
+        # Verificar si se encontró algún registro
+        existe = cursor.fetchone() is not None
+    
+        # Llamar a la función para registrar el inicio de sesión
+        if existe:
+            cursor.execute("SELECT public2.registrar_inicio_sesion(%s);", (usuario,))
+        else:
+            print("inicio de sesion invalido")
+        # Confirmar la transacción
+        self.conn.commit()
+        cursor.close()
+        return existe
+    
+    def cerrarsesion (self,usuario,existe):
+        
+        if existe:
+            cursor = self.conn.cursor()
+            try:
+                # Llamar a la función para registrar el cierre de sesión
+                cursor.execute("SELECT public2.registrar_cierre_sesion(%s);", (usuario,))
+                # Confirmar la transacción
+                self.conn.commit()
+                # Cerrar la conexión
+                self.conn.close()
+                print("Sesión cerrada exitosamente")
+            except Exception as e:
+                print(f"Error al cerrar la sesión: {e}")
+        else:
+         self.conn.close ()
+    
 
     def insertar(self,producto,nuevaf,esquema,tabla):
         cursor=self.conn.cursor()
