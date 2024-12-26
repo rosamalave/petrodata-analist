@@ -2,7 +2,6 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QMainWindow, QStackedWidget, QWidget
 from vistalogin import vistalogin
-from qtdesign import Ui_Form
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -19,7 +18,8 @@ class MainWindow(QMainWindow):
         
         # Crear un QWidget para la tabla y configurar la interfaz
         self.table_view_widget = QWidget()  # Crear un QWidget
-        self.table_view = Ui_Form()  # Crear la instancia de Ui_Form
+        self.table_view = vistalogin(self.show_table).frontend  # Crear la instancia de Ui_Form
+        
         self.table_view.setupUi(self.table_view_widget)  # Configurar la interfaz en el QWidget
 
         self.stacked_widget.addWidget(self.login_view)

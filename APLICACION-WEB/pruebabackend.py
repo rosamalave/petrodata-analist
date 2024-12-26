@@ -3,20 +3,21 @@ from bd.conexion_bd import base_ddatos
 from datetime import datetime
 from decimal import Decimal
 import os
-
+import json
 
 # Función para limpiar la consola
 def limpiar_consola():
     os.system('cls' if os.name == 'nt' else 'clear')
 
 class ConsolaDBBackend:
-    def __init__(self, conexion_bd, esquema, tabla):
+    def __init__(self, conexion_bd, usuario, esquema, tabla):
         self.conexion = conexion_bd
         self.esquema = esquema
         self.tabla = tabla
         self.datos = []  # Sin ID
         self.datosall = []  # Con ID
         self.headers = []
+        self.usuario=usuario
         self.nuevas_filas_indices = []  # Lista para almacenar índices de filas nuevas1
         self.cargar_datos()
 
@@ -32,6 +33,69 @@ class ConsolaDBBackend:
         self.datosall = cursor.fetchall()
         cursor.close()
 
+    # def deshacer_ultimo_cambio(self):
+    #     # Paso 1: Ejecutar la consulta para obtener el historial de modificaciones
+    #     cursor = self.conexion.conn.cursor()
+    #     query= f"""
+    #         SELECT *
+    #         FROM public2.historial_modificaciones
+    #         WHERE usuario = %s
+    #         AND tabla_afectada= %s
+    #         AND accion NOT IN ('inicio de sesión', 'cierre de sesión')
+    #         AND fecha >= (
+    #             SELECT MAX(fecha)
+    #             FROM historial_modificaciones
+    #             WHERE usuario = %s AND accion = 'inicio de sesión'
+    #         )
+    #         ORDER BY fecha DESC
+    #         LIMIT 1;
+    #     """
+    #     #cursor.execute(query, (self.usuario, self.tabla, self.usuario))
+
+    #     # Obtener el último cambio
+    #     ultimo_cambio = cursor.fetchone()
+    #     cursor.close()
+
+    #     if not ultimo_cambio:
+    #         print("No hay cambios para deshacer.")
+    #         return
+
+    #     # Descomponer el registro
+    #     id_cambio, tabla_afectada, accion, detalle_json, fecha, usuario = ultimo_cambio
+
+    #     # Convertir el detalle JSONB a un diccionario
+    #     detalle = json.loads(detalle_json)
+
+    #     # Obtener el ID de la fila afectada desde el detalle
+    #     id_fila_afectada = detalle.get(f"id_{self.tabla}")  # Cambia esto si el campo tiene otro nombre
+
+    #     # Paso 2: Filtrar los valores del detalle según los headers
+    #     detalle_filtrado = [detalle[header] for header in self.conexion.headers if header in detalle]
+
+    #     # Paso 3: Deshacer el cambio según la acción
+    #     if accion == 'insert':
+    #         # Si fue un insert, eliminamos el registro
+    #         self.conexion.eliminar(id_fila_afectada, 'public', tabla_afectada)
+    #         print(f"Registro con ID {id_fila_afectada} eliminado de la tabla {tabla_afectada}.")
+
+    #     elif accion == 'update':
+    #         # Si fue un update, restauramos el registro anterior
+    #         self.conexion.editar(id_fila_afectada, None, detalle_filtrado, 'public', tabla_afectada)
+    #         print(f"Registro con ID {id_fila_afectada} restaurado a su estado anterior en la tabla {tabla_afectada}.")
+
+    #     elif accion == 'delete':
+    #         # Si fue un delete, insertamos el registro de nuevo
+    #         self.conexion.insertar(id_fila_afectada, detalle_filtrado, 'public', tabla_afectada)
+    #         print(f"Registro con ID {id_fila_afectada} restaurado en la tabla {tabla_afectada}.")
+
+    #     else:
+    #         print("Acción no reconocida. No se puede deshacer el cambio.")
+
+    def registrar_historial(self):
+        pass
+        #cursor=self.conexion.conn.cursor()
+        #cursor.execute("SET application_name = %s;", (self.usuario,))
+        #cursor.execute("SELECT registrar_historial(%s);", (self.usuario,))
 
     def aplicar_separador(self, tipo_periodo, tabla, filas_con_indices):
 
@@ -66,9 +130,11 @@ class ConsolaDBBackend:
     def editar_fila(self, indice, fila_editada):
         id_fila = self.datosall[indice][0]
         self.conexion.editar(id_fila, None, fila_editada, self.esquema, self.tabla)
+        self.registrar_historial()
 
     def insertar_fila(self, _, nueva_fila):
         self.conexion.insertar(None, nueva_fila, self.esquema, self.tabla)
+        self.registrar_historial()
 
     def validar(self, valor, esquema, tabla, columna, permite_nulo=False):
 
@@ -124,6 +190,7 @@ class ConsolaDBBackend:
         self.datos.append(nueva_fila)  # Agregar la nueva fila a los datos
         self.nuevas_filas_indices.append(len(self.datos) - 1)  # Guardar el índice de la nueva fila
 
+
     def eliminar_fila(self, indice_superficial):
         if indice_superficial < 0:
             raise IndexError("Índice fuera de rango.")
@@ -137,6 +204,8 @@ class ConsolaDBBackend:
             # Si no es una fila nueva, eliminar de la base de datos
             id_real = self.datosall[indice_superficial][0]
             self.conexion.eliminar(id_real, self.esquema, self.tabla)
+            self.registrar_historial()
+            
             # También eliminar de self.datos si está presente
             self.datos.pop(indice_superficial)
         self.cargar_datos()

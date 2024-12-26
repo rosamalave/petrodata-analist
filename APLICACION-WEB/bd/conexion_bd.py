@@ -19,10 +19,10 @@ class base_ddatos():
         # Consulta para verificar si el usuario y la contraseña coinciden
         consulta = f"SELECT * FROM public2.usuario WHERE usuario = %s AND passwordd = %s"
         cursor.execute(consulta, (usuario, contrasena))
-        
+
         # Verificar si se encontró algún registro
         existe = cursor.fetchone() is not None
-    
+
         # Llamar a la función para registrar el inicio de sesión
         if existe:
             cursor.execute("SELECT public2.registrar_inicio_sesion(%s);", (usuario,))

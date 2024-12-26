@@ -3,14 +3,14 @@ import datetime
 from collections import defaultdict
 from PyQt5 import QtCore, QtGui, QtWidgets 
 from PyQt5.QtCore import QDate
-from pruebabackend import ConsolaDBBackend
-from bd.conexion_bd import base_ddatos
+
 
 class Ui_Form(object):
-    def __init__(self):
-        self.conexion= ConsolaDBBackend(base_ddatos(), "public", "produccion_c")
+    def __init__(self,conexion):
+        self.conexion= conexion
         self.en_modo_edicion = False 
         self.backupfilas = []  # Lista para almacenar el estado de las filas
+
     def setupUi(self, Form):
         
         Form.setObjectName("Form")
@@ -28,7 +28,7 @@ class Ui_Form(object):
         # Establecer un tamaño fijo para la barra lateral (20% del ancho total)
         self.sidebar.setFixedWidth(int(Form.width() * 0.20))  # Ajusta el ancho según sea necesario
 
-        self.controles_paginacion = ControlesPaginacionYPeriodicidad(self, Form)
+        self.controles_paginacion = ControlesPaginacionYPeriodicidad(self.conexion,self,Form)
         self.sidebar_layout.addWidget(self.controles_paginacion)
 
         # Crear el contenedor para filtrar por valores
@@ -41,7 +41,6 @@ class Ui_Form(object):
         campos_numericos = [header for header in self.conexion.headers if header not in ['fecha', 'id']]
         # Agregar los campos al QComboBox
         self.columnafiltrar.addItems(campos_numericos)
-
 
         self.valor_min = QtWidgets.QSpinBox()
         self.valor_min.setRange(0, 20000)
@@ -103,22 +102,25 @@ class Ui_Form(object):
         self.editar_fila_button.clicked.connect(self.editar_fila)
         self.sidebar_layout.addWidget(self.editar_fila_button)
 
-
         # Botón para guardar cambios
         self.guardar_button = QtWidgets.QPushButton("Guardar cambios")
         self.guardar_button.clicked.connect(self.guardar_cambios)
         self.sidebar_layout.addWidget(self.guardar_button)
 
-
         self.eliminar_fila_button = QtWidgets.QPushButton("Eliminar fila")
         self.eliminar_fila_button.clicked.connect(self.eliminar_fila)
         self.sidebar_layout.addWidget(self.eliminar_fila_button)
 
-
-                # Botón para deshacer cambios
-        self.deshacer_button = QtWidgets.QPushButton("Deshacer")
-        self.deshacer_button.clicked.connect(self.deshacer_cambios)
+        # Botón para deshacer cambios de la base de datos
+        self.deshacer_button = QtWidgets.QPushButton("Deshacer cambios sesion")
+        #self.deshacer_button.clicked.connect(self.conexion.deshacer_ultimo_cambio())  # Cambia 'usuario2' por el usuario actual
         self.sidebar_layout.addWidget(self.deshacer_button)
+        self.deshacer_button.setVisible(False)  # Ocultar inicialmente
+        
+        # Botón para deshacer cambios acabados de hacer en modo edicion sin guardar
+        self.deshacer_superficial_button = QtWidgets.QPushButton("Deshacer")
+        self.deshacer_superficial_button.clicked.connect(self.deshacer_cambios_superficiales)  # Cambia 'usuario2' por el usuario actual
+        self.sidebar_layout.addWidget(self.deshacer_superficial_button)
 
         # Variable para almacenar el índice de la fila seleccionada
         self.indice_seleccionado = -1
@@ -194,42 +196,19 @@ class Ui_Form(object):
         Form.setWindowTitle(_translate("Form", "Form"))
         self.tabla.setSortingEnabled(True)
 
-    def dobleclick(self, item):
-        if not self.en_modo_edicion:
-            # Si no estamos en modo de edición, activamos los botones de editar y eliminar
-            self.indice_seleccionado = item.row()  # Obtener el índice de la fila seleccionada
-            self.tabla.selectRow(self.indice_seleccionado)  # Seleccionar la fila completa
-            print(f"Fila seleccionada: {self.indice_seleccionado}")
-            fila_actual = tuple(self.tabla.item(self.indice_seleccionado, column).text() for column in range(self.tabla.columnCount()))
-            self.backupfilas.append(fila_actual)  # Almacenar en la lista de backup
-            self.editar_fila_button.setVisible(True)
-            self.eliminar_fila_button.setVisible(True)
-            self.aggfila.setVisible(False)  # Ocultar el botón "Agregar fila"
-        else:
-            # Si estamos en modo de edición, permitimos la edición de la celda
-            self.tabla.setEditTriggers(QtWidgets.QAbstractItemView.DoubleClicked)  # Permitir edición al hacer doble clic
+    def reiniciar_interfaz(self):
+        # Ocultar botones de edición y eliminación
+        self.editar_fila_button.setVisible(False)  # Ocultar botón de editar fila
+        self.eliminar_fila_button.setVisible(False)  # Ocultar botón de eliminar fila
+        self.guardar_button.setVisible(False)  # Ocultar botón de guardar
+        self.aggfila.setVisible(True)  # Hacer visible el botón de agregar fila
+        self.deshacer_superficial_button.setVisible(False)  # Inicialmente oculto
 
-    def deshacer_cambios(self):
-        if self.backupfilas:
-            # Obtener el estado anterior de la fila
-            fila_anterior = self.backupfilas.pop()  # Obtener la última tupla guardada
-            for column, valor in enumerate(fila_anterior):
-                item = QtWidgets.QTableWidgetItem(str(valor))
-                self.tabla.setItem(self.indice_seleccionado, column, item)  # Restaurar el valor en la tabla
-            print(f"Deshacer cambios en la fila {self.indice_seleccionado}.")
-        self.reiniciar_interfaz()
+        # Restablecer cualquier otro estado que necesites
+        self.indice_seleccionado = -1  # Reiniciar el índice seleccionado
+        self.tabla.clearSelection()  # Limpiar la selección de la tabla
+        self.tabla.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)  # Desactivar edición
 
-    def eliminar_fila(self):
-        self.indice_seleccionado=self.tabla.currentRow()
-        if self.indice_seleccionado != -1:
-            try:
-                self.conexion.eliminar_fila(self.indice_seleccionado)  # Llamada al método del backend
-                print("Fila eliminada.")
-            except (IndexError, ValueError) as e:
-                print(f"Error: {e}")
-        self.reiniciar_interfaz()
-        self.cargar_datos(self.conexion.datos)
-        
     def cargar_datos(self,datos):
         self.tabla.setRowCount(0)
                 # Cargar los datos en la tabla
@@ -250,19 +229,42 @@ class Ui_Form(object):
         self.sidebar.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Expanding)  # Fijo en ancho, expandible en alto
         self.contenedortabla.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)  # Expandible en ambos
 
-    def reiniciar_interfaz(self):
-        # Ocultar botones de edición y eliminación
-        self.editar_fila_button.setVisible(False)  # Ocultar botón de editar fila
-        self.eliminar_fila_button.setVisible(False)  # Ocultar botón de eliminar fila
-        self.guardar_button.setVisible(False)  # Ocultar botón de guardar
-        self.aggfila.setVisible(True)  # Hacer visible el botón de agregar fila
-        self.deshacer_button.setVisible(False)  # Ocultar inicialmente
+    def dobleclick(self, item):
+        if not self.en_modo_edicion:
+            # Si no estamos en modo de edición, activamos los botones de editar y eliminar
+            self.indice_seleccionado = item.row()  # Obtener el índice de la fila seleccionada
+            self.tabla.selectRow(self.indice_seleccionado)  # Seleccionar la fila completa
+            print(f"Fila seleccionada: {self.indice_seleccionado}")
+            fila_actual = tuple(self.tabla.item(self.indice_seleccionado, column).text() for column in range(self.tabla.columnCount()))
+            self.backupfilas.append(fila_actual)  # Almacenar en la lista de backup
+            self.editar_fila_button.setVisible(True)
+            self.eliminar_fila_button.setVisible(True)
+            self.aggfila.setVisible(False)  # Ocultar el botón "Agregar fila"
+        else:
+            # Si estamos en modo de edición, permitimos la edición de la celda
+            self.tabla.setEditTriggers(QtWidgets.QAbstractItemView.DoubleClicked)  # Permitir edición al hacer doble clic
 
-        # Restablecer cualquier otro estado que necesites
-        self.indice_seleccionado = -1  # Reiniciar el índice seleccionado
-        self.tabla.clearSelection()  # Limpiar la selección de la tabla
-        self.tabla.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)  # Desactivar edición
+    def deshacer_cambios_superficiales(self):
+        if self.backupfilas:
+            # Obtener el estado anterior de la fila
+            fila_anterior = self.backupfilas.pop()  # Obtener la última tupla guardada
+            for column, valor in enumerate(fila_anterior):
+                item = QtWidgets.QTableWidgetItem(str(valor))
+                self.tabla.setItem(self.indice_seleccionado, column, item)  # Restaurar el valor en la tabla
+            print(f"Deshacer cambios en la fila {self.indice_seleccionado}.")
+        self.reiniciar_interfaz()
 
+    def eliminar_fila(self):
+        self.indice_seleccionado=self.tabla.currentRow()
+        if self.indice_seleccionado != -1:
+            try:
+                self.conexion.eliminar_fila(self.indice_seleccionado)  # Llamada al método del backend
+                print("Fila eliminada.")
+            except (IndexError, ValueError) as e:
+                print(f"Error: {e}")
+        self.reiniciar_interfaz()
+        self.cargar_datos(self.conexion.datos)
+        
     def agregar_fila(self):
         self.conexion.agregar_fila()
         print("\nFila vacía agregada.")
@@ -271,7 +273,7 @@ class Ui_Form(object):
 
     def editar_fila(self):
         self.en_modo_edicion = True
-        self.deshacer_button.setVisible(True)
+        self.deshacer_superficial_button.setVisible(True)
         self.tabla.setEditTriggers(QtWidgets.QAbstractItemView.DoubleClicked) 
         self.indice_seleccionado = self.tabla.currentRow()  # Obtener el índice de la fila seleccionada
         if self.indice_seleccionado != -1:
@@ -288,6 +290,8 @@ class Ui_Form(object):
         self.tabla.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)  # Desactivar edición
         self.guardar_button.setVisible(False)  # Ocultar botón de guardar
         self.editar_fila_button.setVisible(True)  # Mostrar botón de editar
+        self.deshacer_button.setVisible(True)
+
         try:
             # Obtener el índice de la fila seleccionada
             self.indice_seleccionado = self.tabla.currentRow()
@@ -339,10 +343,10 @@ class Ui_Form(object):
 
 
 class ControlesPaginacionYPeriodicidad(QtWidgets.QWidget):
-    def __init__(self, ui_form_instance, parent=None):
+    def __init__(self, conexion, ui_form_instance, parent=None):
         super(ControlesPaginacionYPeriodicidad, self).__init__(parent)
         self.ui= ui_form_instance
-        self.conexion= ConsolaDBBackend(base_ddatos(), "public", "produccion_c")
+        self.conexion= conexion
         # Layout para los controles
         self.layout = QtWidgets.QVBoxLayout(self)
 
