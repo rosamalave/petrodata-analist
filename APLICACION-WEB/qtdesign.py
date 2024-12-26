@@ -113,7 +113,7 @@ class Ui_Form(object):
 
         # Botón para deshacer cambios de la base de datos
         self.deshacer_button = QtWidgets.QPushButton("Deshacer cambios sesion")
-        #self.deshacer_button.clicked.connect(self.conexion.deshacer_ultimo_cambio())  # Cambia 'usuario2' por el usuario actual
+        self.deshacer_button.clicked.connect(self.deshacer_ultimo_cambio)  # Cambia 'usuario2' por el usuario actual
         self.sidebar_layout.addWidget(self.deshacer_button)
         self.deshacer_button.setVisible(False)  # Ocultar inicialmente
         
@@ -245,6 +245,13 @@ class Ui_Form(object):
         else:
             # Si estamos en modo de edición, permitimos la edición de la celda
             self.tabla.setEditTriggers(QtWidgets.QAbstractItemView.DoubleClicked)  # Permitir edición al hacer doble clic
+
+    def deshacer_ultimo_cambio(self):
+        if self.conexion.deshacer_ultimo_cambio():
+            self.cargar_datos(self.conexion.datos)
+        else:
+            self.deshacer_button.setVisible(False)
+            self.reiniciar_interfaz()
 
     def deshacer_cambios_superficiales(self):
         if self.backupfilas:

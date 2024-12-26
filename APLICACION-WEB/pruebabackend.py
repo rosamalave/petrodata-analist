@@ -1,4 +1,5 @@
 from prettytable import PrettyTable
+import psycopg2
 from bd.conexion_bd import base_ddatos
 from datetime import datetime
 from decimal import Decimal
@@ -35,64 +36,72 @@ class ConsolaDBBackend:
         else: 
             pass
 
-    # def deshacer_ultimo_cambio(self):
-    #     # Paso 1: Ejecutar la consulta para obtener el historial de modificaciones
-    #     cursor = self.conexion.conn.cursor()
-    #     query= f"""
-    #         SELECT *
-    #         FROM public2.historial_modificaciones
-    #         WHERE usuario = %s
-    #         AND tabla_afectada= %s
-    #         AND accion NOT IN ('inicio de sesión', 'cierre de sesión')
-    #         AND fecha >= (
-    #             SELECT MAX(fecha)
-    #             FROM historial_modificaciones
-    #             WHERE usuario = %s AND accion = 'inicio de sesión'
-    #         )
-    #         ORDER BY fecha DESC
-    #         LIMIT 1;
-    #     """
-    #     #cursor.execute(query, (self.usuario, self.tabla, self.usuario))
+    def deshacer_ultimo_cambio(self):
+        # Paso 1: Ejecutar la consulta para obtener el historial de modificaciones
+        cursor = self.conexion.conn.cursor()
+        query= f"""
+            SELECT *
+            FROM public2.historial_modificaciones
+            WHERE usuario = %s
+            AND tabla_afectada= %s
+            AND accion NOT IN ('Inicio de sesion', 'Cierre de sesion')
+            AND fecha >= (
+                SELECT MAX(fecha)
+                FROM public2.historial_modificaciones
+                WHERE usuario = %s AND accion = 'Inicio de sesion'
+            )
+            ORDER BY fecha DESC
+            LIMIT 1;
+        """
+        cursor.execute(query, (self.usuario, self.tabla, self.usuario))
 
-    #     # Obtener el último cambio
-    #     ultimo_cambio = cursor.fetchone()
-    #     cursor.close()
+        # Obtener el último cambio
+        
+        ultimo_cambio = cursor.fetchone()
+        cursor.close()
+        print(ultimo_cambio)
 
-    #     if not ultimo_cambio:
-    #         print("No hay cambios para deshacer.")
-    #         return
+        if not ultimo_cambio:
+            print("No hay cambios para deshacer.")
+            return False
 
-    #     # Descomponer el registro
-    #     id_cambio, tabla_afectada, accion, detalle_json, fecha, usuario = ultimo_cambio
+        # Descomponer el registro
+        id_cambio, tabla_afectada, accion, detalle_json, fecha, usuario = ultimo_cambio
 
-    #     # Convertir el detalle JSONB a un diccionario
-    #     detalle = json.loads(detalle_json)
+        # Convertir el detalle JSONB a un diccionario
+        detalle = detalle_json
 
-    #     # Obtener el ID de la fila afectada desde el detalle
-    #     id_fila_afectada = detalle.get(f"id_{self.tabla}")  # Cambia esto si el campo tiene otro nombre
+        # Obtener el ID de la fila afectada desde el detalle
+        id_fila_afectada = detalle.get(f"id_{self.tabla}")  # Cambia esto si el campo tiene otro nombre
 
-    #     # Paso 2: Filtrar los valores del detalle según los headers
-    #     detalle_filtrado = [detalle[header] for header in self.conexion.headers if header in detalle]
+        # Paso 2: Filtrar los valores del detalle según los headers
+        detalle_filtrado = [detalle[header] for header in self.headers if header in detalle]
 
-    #     # Paso 3: Deshacer el cambio según la acción
-    #     if accion == 'insert':
-    #         # Si fue un insert, eliminamos el registro
-    #         self.conexion.eliminar(id_fila_afectada, 'public', tabla_afectada)
-    #         print(f"Registro con ID {id_fila_afectada} eliminado de la tabla {tabla_afectada}.")
+        # Paso 3: Deshacer el cambio según la acción
+        if accion == 'INSERT':
+            # Si fue un insert, eliminamos el registro
+            self.conexion.eliminar(id_fila_afectada, 'public', tabla_afectada)
+            self.cargar_datos()
+            print(f"Registro con ID {id_fila_afectada} eliminado de la tabla {tabla_afectada}.")
+            return True
+        elif accion == 'UPDATE':
+            # Si fue un update, restauramos el registro anterior
+            self.conexion.editar(id_fila_afectada, None, detalle_filtrado, 'public', tabla_afectada)
+            print(detalle_filtrado)
+            print(f"Registro con ID hola {id_fila_afectada} restaurado a su estado anterior en la tabla {tabla_afectada}.")
+            self.cargar_datos()
+            return True
+        
+        elif accion == 'DELETE':
+            # Si fue un delete, insertamos el registro de nuevo
+            self.conexion.insertar(id_fila_afectada, detalle_filtrado, 'public', tabla_afectada)
+            print(f"Registro con ID {id_fila_afectada} restaurado en la tabla {tabla_afectada}.")
+            self.cargar_datos()
+            return True
 
-    #     elif accion == 'update':
-    #         # Si fue un update, restauramos el registro anterior
-    #         self.conexion.editar(id_fila_afectada, None, detalle_filtrado, 'public', tabla_afectada)
-    #         print(f"Registro con ID {id_fila_afectada} restaurado a su estado anterior en la tabla {tabla_afectada}.")
-
-    #     elif accion == 'delete':
-    #         # Si fue un delete, insertamos el registro de nuevo
-    #         self.conexion.insertar(id_fila_afectada, detalle_filtrado, 'public', tabla_afectada)
-    #         print(f"Registro con ID {id_fila_afectada} restaurado en la tabla {tabla_afectada}.")
-
-    #     else:
-    #         print("Acción no reconocida. No se puede deshacer el cambio.")
-
+        else:
+            print("Acción no reconocida. No se puede deshacer el cambio.")
+            return False
 
     def aplicar_separador(self, tipo_periodo, tabla, filas_con_indices):
 
