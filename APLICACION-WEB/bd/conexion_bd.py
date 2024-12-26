@@ -9,48 +9,73 @@ import sys
 class base_ddatos():
 
     def __init__(self):
+        # Conexión inicial vacía, se establecerá al iniciar sesión
+        self.conn = None
 
-        #objeto de tipo conexion que guarda metodos: cursor, commit, rollback, close
-        self.conn = psycopg2.connect(host="localhost", database="juninpruebas", user="postgres", password="Junindata" )
-        
+    def verificar_iniciar_sesion(self, usuario, contrasena):
+        # Conexión inicial para verificar credenciales en la tabla `usuario`
+        try:
+            # Conexión temporal con usuario maestro para verificar credenciales
+            conn_temp = psycopg2.connect(
+                host="localhost",
+                database="juninpruebas",
+                user="postgres",
+                password="Junindata"
+            )
+            cursor = conn_temp.cursor()
 
-    def verificariniciarsesion (self,usuario,contrasena):
-        cursor = self.conn.cursor()
-        # Consulta para verificar si el usuario y la contraseña coinciden
-        consulta = f"SELECT * FROM public2.usuario WHERE usuario = %s AND passwordd = %s"
-        cursor.execute(consulta, (usuario, contrasena))
+            # Verificar credenciales en la tabla de la aplicación
+            consulta = "SELECT * FROM public2.usuario WHERE usuario = %s AND passwordd = %s"
+            cursor.execute(consulta, (usuario, contrasena))
+            existe = cursor.fetchone() is not None
+            cursor.close()
+            conn_temp.close()
 
-        # Verificar si se encontró algún registro
-        existe = cursor.fetchone() is not None
+            if not existe:
+                print("Usuario o contraseña incorrectos en la tabla de la aplicación.")
+                return False
 
-        # Llamar a la función para registrar el inicio de sesión
-        if existe:
-            cursor.execute("SELECT public2.registrar_inicio_sesion(%s);", (usuario,))
-        else:
-            print("inicio de sesion invalido")
-        # Confirmar la transacción
-        self.conn.commit()
-        cursor.close()
-        return existe
-    
-    def cerrarsesion (self,usuario,existe):
-        
-        if existe:
-            cursor = self.conn.cursor()
+            # Si las credenciales son válidas, intentar conexión con PostgreSQL usando esas credenciales
             try:
-                # Llamar a la función para registrar el cierre de sesión
-                cursor.execute("SELECT public2.registrar_cierre_sesion(%s);", (usuario,))
-                # Confirmar la transacción
+                self.conn = psycopg2.connect(
+                    host="localhost",
+                    database="juninpruebas",
+                    user=usuario,
+                    password=contrasena
+                )
+                print("Sesión iniciada correctamente.")
+                cursor=self.conn.cursor()
+                cursor.execute("SELECT public2.registrar_inicio_sesion();")
                 self.conn.commit()
-                # Cerrar la conexión
-                self.conn.close()
-                print("Sesión cerrada exitosamente")
-            except Exception as e:
-                print(f"Error al cerrar la sesión: {e}")
-        else:
-         self.conn.close ()
-    
+                cursor.close()
+                return True
+            except psycopg2.OperationalError as e:
+                print(f"Error al conectar a PostgreSQL: {e}")
+                return False
+            
+        except Exception as e:
+            print(f"Error durante el inicio de sesión: {e}")
+            return False
 
+    def cerrar_sesion(self, usuario):
+        """
+        Cierra la conexión y registra el cierre de sesión.
+        """
+        if self.conn:
+            try:
+                cursor = self.conn.cursor()
+                # Registrar el cierre de sesión si existe un método o función para ello
+                cursor.execute("SELECT public2.registrar_cierre_sesion();")
+                self.conn.commit()
+                cursor.close()
+                print(f"Sesión de {usuario} cerrada exitosamente.")
+            except Exception as e:
+                print(f"Error al registrar el cierre de sesión: {e}")
+            finally:
+                self.conn.close()
+                self.conn = None
+                print("Conexión cerrada.")
+                
     def insertar(self,producto,nuevaf,esquema,tabla):
         cursor=self.conn.cursor()
         print(f"Fila editada en insertar: {nuevaf}")

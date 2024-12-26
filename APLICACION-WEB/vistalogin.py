@@ -9,8 +9,8 @@ class vistalogin(QWidget):
         self.init_ui()
         self.conexion=base_ddatos()
         self.usuario = ""
-        self.backend = ConsolaDBBackend(self.conexion, self.usuario, "public", "produccion_c",)
-        self.frontend = Ui_Form(self.backend)
+        self.backend = None
+        self.frontend = None
         self.existe = False
 
     def init_ui(self):
@@ -20,11 +20,11 @@ class vistalogin(QWidget):
         self.button_layout = QHBoxLayout()
 
         self.marielys_button = QPushButton("Marielys", self)
-        self.marielys_button.clicked.connect(lambda: self.handle_login("Marielys"))
+        self.marielys_button.clicked.connect(lambda: self.handle_login("marielys"))
         self.button_layout.addWidget(self.marielys_button)
 
         self.luis_button = QPushButton("Luis", self)
-        self.luis_button.clicked.connect(lambda: self.handle_login("Luis"))
+        self.luis_button.clicked.connect(lambda: self.handle_login("luis"))
         self.button_layout.addWidget(self.luis_button)
 
         self.layout.addLayout(self.button_layout)
@@ -75,11 +75,12 @@ class vistalogin(QWidget):
         # Obtiene la contraseña ingresada y llama a la función de autenticación
         password = self.password_input.text()
         # Lógica de autenticación basada en el tipo de usuario
-        if self.conexion.verificariniciarsesion(self.usuario, password):
+        if self.conexion.verificar_iniciar_sesion(self.usuario, password):
             self.existe = True
-            self.on_login()
             self.backend = ConsolaDBBackend(self.conexion, self.usuario, "public", "produccion_c",)
-            self.frontend = Ui_Form(self.backend)
+            self.backend.cargar_datos()
+            self.on_login()
+            #self.frontend = Ui_Form(self.backend)
         else:
             print("usuario invalido, no existe en la base de datos")
 
@@ -95,4 +96,4 @@ class vistalogin(QWidget):
         self.luis_button.setVisible(True)
         
     def cerrarsesion(self):
-        self.conexion.cerrarsesion(self.usuario, self.existe)
+        self.conexion.cerrar_sesion(self.usuario)

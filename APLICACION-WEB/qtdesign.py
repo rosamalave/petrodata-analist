@@ -198,6 +198,7 @@ class Ui_Form(object):
 
     def reiniciar_interfaz(self):
         # Ocultar botones de edición y eliminación
+        
         self.editar_fila_button.setVisible(False)  # Ocultar botón de editar fila
         self.eliminar_fila_button.setVisible(False)  # Ocultar botón de eliminar fila
         self.guardar_button.setVisible(False)  # Ocultar botón de guardar
@@ -210,6 +211,7 @@ class Ui_Form(object):
         self.tabla.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)  # Desactivar edición
 
     def cargar_datos(self,datos):
+        
         self.tabla.setRowCount(0)
                 # Cargar los datos en la tabla
         for fila in datos:
