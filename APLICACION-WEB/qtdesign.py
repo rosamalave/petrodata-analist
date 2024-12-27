@@ -247,11 +247,17 @@ class Ui_Form(object):
             self.tabla.setEditTriggers(QtWidgets.QAbstractItemView.DoubleClicked)  # Permitir edición al hacer doble clic
 
     def deshacer_ultimo_cambio(self):
-        if self.conexion.deshacer_ultimo_cambio():
-            self.cargar_datos(self.conexion.datos)
-        else:
-            self.deshacer_button.setVisible(False)
+
+        deshecho=self.conexion.deshacer_ultimo_cambio()
+        if deshecho==0:
+            print("error: no se pudo realizar el cambio")
             self.reiniciar_interfaz()
+        if deshecho==1:
+            self.cargar_datos(self.conexion.datos)
+        if deshecho==3:
+            self.deshacer_button.setVisible(False)
+            self.cargar_datos(self.conexion.datos)
+
 
     def deshacer_cambios_superficiales(self):
         if self.backupfilas:

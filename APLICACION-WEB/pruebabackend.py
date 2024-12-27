@@ -37,13 +37,17 @@ class ConsolaDBBackend:
             pass
 
     def deshacer_ultimo_cambio(self):
+        #0 falso #1verdadero #2ocultar (1 verdadero + 1 ocultar)
+        bandera=0
         # Paso 1: Ejecutar la consulta para obtener el historial de modificaciones
         cursor = self.conexion.conn.cursor()
-        query= f"""
+
+        query = f"""
             SELECT *
             FROM public2.historial_modificaciones
             WHERE usuario = %s
-            AND tabla_afectada= %s
+            AND tabla_afectada = %s
+            AND estado = 'vigente'  -- Condición añadida
             AND accion NOT IN ('Inicio de sesion', 'Cierre de sesion')
             AND fecha >= (
                 SELECT MAX(fecha)
@@ -51,22 +55,31 @@ class ConsolaDBBackend:
                 WHERE usuario = %s AND accion = 'Inicio de sesion'
             )
             ORDER BY fecha DESC
-            LIMIT 1;
+            LIMIT 2;
         """
         cursor.execute(query, (self.usuario, self.tabla, self.usuario))
 
         # Obtener el último cambio
         
-        ultimo_cambio = cursor.fetchone()
+        cambios=cursor.fetchall()
+        if cursor.rowcount == 1:
+            bandera = 2
+        ultimo_cambio = cambios[0]
         cursor.close()
-        print(ultimo_cambio)
-
-        if not ultimo_cambio:
-            print("No hay cambios para deshacer.")
-            return False
+        print ("filas del cursor: ",cursor.rowcount)
+        print(f"holaa: ",cambios)
+        print(f"hola: ", ultimo_cambio)
 
         # Descomponer el registro
-        id_cambio, tabla_afectada, accion, detalle_json, fecha, usuario = ultimo_cambio
+        id_cambio, tabla_afectada, accion, detalle_json, fecha, usuario, estado = ultimo_cambio
+        
+        # Marcar el cambio como "deshecho"
+        cursor = self.conexion.conn.cursor()
+        cursor.execute("""
+            UPDATE public2.historial_modificaciones
+            SET estado = 'deshecho'  -- Cambiar el estado a 'deshecho'
+            WHERE id = %s;
+        """, (id_cambio,))
 
         # Convertir el detalle JSONB a un diccionario
         detalle = detalle_json
@@ -78,30 +91,40 @@ class ConsolaDBBackend:
         detalle_filtrado = [detalle[header] for header in self.headers if header in detalle]
 
         # Paso 3: Deshacer el cambio según la acción
+        cursor.execute(f"ALTER TABLE public.{self.tabla} DISABLE TRIGGER {self.tabla}_historial;")
+        self.conexion.conn.commit()
+
         if accion == 'INSERT':
             # Si fue un insert, eliminamos el registro
             self.conexion.eliminar(id_fila_afectada, 'public', tabla_afectada)
             self.cargar_datos()
             print(f"Registro con ID {id_fila_afectada} eliminado de la tabla {tabla_afectada}.")
-            return True
+            bandera+= 1
         elif accion == 'UPDATE':
             # Si fue un update, restauramos el registro anterior
             self.conexion.editar(id_fila_afectada, None, detalle_filtrado, 'public', tabla_afectada)
             print(detalle_filtrado)
             print(f"Registro con ID hola {id_fila_afectada} restaurado a su estado anterior en la tabla {tabla_afectada}.")
             self.cargar_datos()
-            return True
+            bandera+= 1
         
         elif accion == 'DELETE':
             # Si fue un delete, insertamos el registro de nuevo
             self.conexion.insertar(id_fila_afectada, detalle_filtrado, 'public', tabla_afectada)
             print(f"Registro con ID {id_fila_afectada} restaurado en la tabla {tabla_afectada}.")
             self.cargar_datos()
-            return True
-
+            bandera+= 1
         else:
-            print("Acción no reconocida. No se puede deshacer el cambio.")
-            return False
+            print("No se pudo realizar el cambio .")
+            bandera=0
+
+        cursor.execute(f"ALTER TABLE public.{self.tabla} ENABLE TRIGGER {self.tabla}_historial;")
+
+        self.conexion.conn.commit()
+        cursor.close()
+        return bandera
+
+
 
     def aplicar_separador(self, tipo_periodo, tabla, filas_con_indices):
 
