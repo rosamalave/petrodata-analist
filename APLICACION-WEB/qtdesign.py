@@ -305,7 +305,7 @@ class Ui_Form(object):
         self.tabla.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)  # Desactivar edición
         self.guardar_button.setVisible(False)  # Ocultar botón de guardar
         self.editar_fila_button.setVisible(True)  # Mostrar botón de editar
-        self.deshacer_button.setVisible(True)
+        
 
         try:
             # Obtener el índice de la fila seleccionada
@@ -337,6 +337,7 @@ class Ui_Form(object):
             print(f"Error: {e}")
         finally:
             self.reiniciar_interfaz()
+            self.deshacer_button.setVisible(True)
 
     def filtro_por_valores(self, header, valor_min, valor_max):
 
