@@ -1,0 +1,52 @@
+* Sun Dec 29 10:31:01 2024 -0400 - ULTIMO COMMIT DE DESHACER LISTO
+* Fri Dec 27 16:31:27 2024 -0400 - ARREGLADO BUG DESHACER MAS DE EL ULTIMO CAMBIO HECHO. registraba las operaciones dentro del metodo deshacer (insert, update, delete), ya no las registra y deshace correctamente. tambien se agrego atributo "estado" para tener en cuenta cuales operaciones se han deshecho y cuales no
+* Thu Dec 26 13:52:27 2024 -0400 - INTEGRANDO FUNCIONALIDAD DESHACER, ya deshace, probado en update falta probar las otras, pero falta que deje de deshacer cuando se haya quitado el ultimo cambio hecho
+* Thu Dec 26 12:17:52 2024 -0400 - USUARIOS A NIVEL DE POSTGRESQL CREADOS, INICIO DE SESION APLICACION + INICIO DE SESION POSTGRE IMPLEMENTADO, MANTENER UNA SOLA CONEXION DESDE EL INICIO HASTA EL CIERRE IMPLEMENTADO, CONFLICTO DE INSTANCIAS SOLUCIONADO. todo funcionando hasta ahora, falta el boton deshacer
+* Thu Dec 26 09:45:37 2024 -0400 - CAMBIOS DE LOGICA PARA MANEJAR MEJOR LAS CONEXIONES ENTRE CLASES, BOTON DESHACER AGREGADO A LA INTERFAZ, LOGICA NO PROBADA. FUNCIONANDO HASTA AQUI
+* Fri Dec 20 14:45:20 2024 -0400 - INICIO DE SESION PRIMITIVO, HISTORIAL DE MODIFICACIONES SE ALIMENTA AUTOMATICAMENTE, REGISTRO DE INICIO DE SESION EN HISTORIAL. PROBADO: solo falta la ui para mostrar el historial de modificaciones, e implementar el boton deshacer
+* Fri Dec 20 09:23:58 2024 -0400 - INICIANDO DESARROLLO DE HISTORIAL DE MODIFICACIONES E INICIO DE SESION. Primer commit, version muy primitiva, sin pruebas
+* Wed Dec 18 15:25:18 2024 -0400 - ULTIMO COMMIT DE PAGINACION LISTO
+* Wed Dec 18 15:24:39 2024 -0400 - INTEGRANDO FUNCIONALIDAD DE BOTON DESHACER PAGINACION. restura la interfaz, probado
+* Wed Dec 18 14:42:49 2024 -0400 - INTEGRANDO CONTROLES DE PAGINACION. PROBADO
+* Wed Dec 18 12:32:29 2024 -0400 - INTEGRANDO FUNCIONALIDAD DE PAGINACION, PROBADA. ya pagina, ahora falta que los controles de la paginacion funcionen correctamente
+* Tue Dec 17 10:31:02 2024 -0400 - INTEGRANDO FUNCIONALIDAD ELIMINAR Y EDITAR FILAS AGREGADAS. PROBADO. ULTIMO AJUSTE DE CRUD BASICO, FUNCIONANDO. CERRAMOS ESTE PROCESO, INICIAMOS PAGINACION E HISTORIAL DE CAMBIOS
+* Mon Dec 16 17:03:12 2024 -0400 - INTEGRANDO FUNCIONALIDAD DE EDITAR FILA, GUARDAR Y DESHACER CAMBIOS. solo falta eliminar (sin probar funcionalidad en qt) y agregar fila (falla por indice fuera de rango)
+* Mon Dec 16 14:14:23 2024 -0400 - INTEGRANDO FUNCIONALIDAD DE MODULO FILTRO POR FECHA PROBADAA, FUNCIONANDO
+* Mon Dec 16 13:48:52 2024 -0400 - INTEGRANDO FUNCIONALIDAD PROBADA MODULO DE FILTRO POR VALORES, REESTRUCTURACION DEL CODIGO EN DOS ARCHIVOS QTDESIGN Y PRUEBABACKEND, MAIN2 SOLO ES PROVISIONAL ARCHIVO DE ARRANQUE
+* Mon Dec 16 12:27:43 2024 -0400 - IMPLEMENTANDO LISTA DESPLEGABLE DE HEADER PARA FILTRAR POR VALORES
+* Sun Dec 15 13:46:31 2024 -0400 - INTERFAZ FINAL QT DE PRUEBA, ESTA PERFECTO EN DISEÑO BASICO. NO SE HA PROBADO LA FUNCIONALIDAD DE LOS BOTONES
+* Sun Dec 15 12:46:18 2024 -0400 - SE MANTIENE LOS BOTONES EN LA BARRA LATERAL PERO HAY QUE AJUSTAR EL TAMAÑO PORQUE LOS BOTONES SE TOMAN LA MITAD DE LA PANTALLA
+* Sun Dec 15 12:18:03 2024 -0400 - INTEGRANDO CONFIGURACIONES DE DISEÑO DE LOS BOTONES AL ARCHIVO QT DESIGN, DEJANDO SOLO LOS METODOS DE ACCION EN MAIN2. ERROR: sigue el error de que se superponen los botones a la tabla
+* Sun Dec 15 11:48:11 2024 -0400 - DEFINIENDO ESTRUCTURA DE FILTROS Y BOTONES EN BARRA LATERAL. main2 define configuraciones de diseño y conexiones de botones de barra lateral. qt design configuracion de tabla con contenedor de barra lateral. ERROR: se superponen los botones y no se ajustan a la barra lateral
+* Thu Dec 12 08:53:52 2024 -0400 - ULTIMOS AJUSTES ANTES DE INTEGRAR CON INTERFAZ
+* Tue Dec 10 15:49:12 2024 -0400 - Fusionando la version 2 del CRUD original, a la rama base. La version 2 funciono con éxito. ESTRUCTURA: Logica backend en clasebdbackend, Front end opcional de consola en clasebdfrontend. LISTA DE FUNCIONES: agrega fila, inserta, edita, elimina, filtro por fechas, filtro por valor, segmentación por periodos (separadores). PRUEBA: pasa las pruebas con la tabla base (produccion_c)
+* Tue Dec 10 15:11:48 2024 -0400 - limpiando codigo. ultimo commit
+* Tue Dec 10 14:27:43 2024 -0400 - SEPARACION BACKEND DE FRONTEND. todas las opciones probadas con la tabla produccion_c. Falto probar separador mensual pero el anual funciona. Ultima version CRUD backend. Pasamos apartir de ahora a conectarlo con interfaz
+* Mon Dec 9 18:34:09 2024 -0400 - SEPARACION BACKEND PRUEBA 1. probado pero sin opcion edicion
+* Mon Dec 9 15:22:09 2024 -0400 - MODIFICACION DE METODO ELIMINAR. ya se liga el id superficial con el id real
+* Mon Dec 9 15:05:54 2024 -0400 - AGREGANDO FILTROS Y SEGMENTACION. 2 tipos de filtros y segmentacion por periodos. Probado y funcionando
+* Thu Dec 5 12:31:28 2024 -0400 - actualizacion de archivos. No importante
+* Tue Nov 26 15:41:49 2024 -0400 - LISTO EL CRUD BASICO BACKEND: falta afinar algunos detalles descritos en prueba. estado: funcionando, probado
+* Mon Nov 25 22:23:02 2024 -0400 - actualizacion de archivos #1
+* Mon Nov 25 22:22:34 2024 -0400 - editar de conexion bd finalmente funcionando bajo las condiciones dadas. Insertar por probar
+* Mon Nov 25 22:20:12 2024 -0400 - intento de prueba unitaria para front+backend. estado actual: fallida
+* Mon Nov 25 22:19:22 2024 -0400 - prueba backend. Archivo creado para probar el codigo backend desde la consola, hasta ahora solo va dirigido a conexion_bd
+* Sun Nov 24 19:08:06 2024 -0400 - descripcion: reestructurando codigo en carpetas, dividiendo el diseño en 2 qt design (funcion de qt design) y qt funcional (funciones extra). -----probado: si
+* Sun Nov 24 15:51:39 2024 -0400 - descripcion: ultima modificación fallida para hacer funcionar el modo edicion. modulo probado: modo edición, U: update situacion actual: edita la base de datos si, pero edita una fila distinta a la seleccionada y con valores distintos al envidado desde la qtable. Procedemos a crear una sub rama de funcion de crud actual para reestructurar codigo.
+* Tue Nov 19 22:04:06 2024 -0400 - base de datos prueba
+* Tue Nov 19 22:03:34 2024 -0400 - conectando a base de datos prueba, ajustes de diseño probados
+* Tue Nov 19 16:27:19 2024 -0400 - Agregando funciones de modo edicion y conectando a los botones. Probado: No. Corre: Si, con boton de edicion sin el icono
+* Mon Nov 18 16:03:57 2024 -0400 - funciones bd +ui: insertar, editar, eliminar. Sin conectar a botones. Sin probar
+* Thu Nov 14 20:27:11 2024 -0400 - actualizacion periodica carpeta: archivos extra
+* Thu Nov 14 20:26:20 2024 -0400 - primera version de aplicacion: widget tabla mapea datos de BD
+* Thu Nov 14 12:35:36 2024 -0400 - actualizacion periodica carpeta archivos extra
+* Thu Nov 14 12:34:59 2024 -0400 - primera tabla creada con qt designer pero archivo.iu (original de qt designer)
+* Thu Nov 14 12:23:09 2024 -0400 - primera conexion basica de base de datos (sin probar)
+* Thu Nov 14 11:16:28 2024 -0400 - primera tabla creada con qt designer: solo esqueleto
+*   Thu Oct 31 14:05:16 2024 -0400 - agrgando los archivos base del repositorio remoto al local
+|\  
+| * Thu Oct 31 12:26:12 2024 -0400 - Rename .gitignore to vs.gitignore
+| * Thu Oct 31 12:25:22 2024 -0400 - Create python.gitignore
+| * Thu Oct 31 11:50:20 2024 -0400 - Create .gitignore
+| * Thu Oct 31 11:39:24 2024 -0400 - Create README.md
+* Thu Oct 31 13:39:45 2024 -0400 - Primera carga de archivos del proyecto. Aplicacion gestora de base de datos de petrojunin
