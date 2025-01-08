@@ -1,16 +1,14 @@
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QHBoxLayout
 from bd.conexion_bd import base_ddatos
 from pruebabackend import ConsolaDBBackend
-from qtdesign import Ui_Form
+from homepage import HomePage
 class vistalogin(QWidget):
     def __init__(self, on_login):
         super().__init__()
         self.on_login = on_login
         self.init_ui()
-        self.conexion=base_ddatos()
+        self.conexion = base_ddatos()
         self.usuario = ""
-        self.backend = None
-        self.frontend = None
         self.existe = False
 
     def init_ui(self):
@@ -77,9 +75,7 @@ class vistalogin(QWidget):
         # Lógica de autenticación basada en el tipo de usuario
         if self.conexion.verificar_iniciar_sesion(self.usuario, password):
             self.existe = True
-            self.backend = ConsolaDBBackend(self.conexion, self.usuario, "public", "produccion_c",)
-            self.backend.cargar_datos()
-            self.on_login()
+            self.on_login(self.usuario, self.conexion)
             #self.frontend = Ui_Form(self.backend)
         else:
             print("usuario invalido, no existe en la base de datos")
