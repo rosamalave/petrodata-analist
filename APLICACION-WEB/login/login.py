@@ -1,23 +1,88 @@
+import sys
+from PyQt5.QtCore import Qt, QTranslator, QLocale, QRect
+from PyQt5.QtGui import QIcon, QPixmap, QColor
+from PyQt5.QtWidgets import QApplication, QAction, QMenu
+from qfluentwidgets import (
+    Action, RoundMenu, setThemeColor, FluentTranslator, setTheme, Theme, 
+    SplitTitleBar, isDarkTheme, SplitPushButton, FluentIcon, BodyLabel, 
+    CheckBox, HyperlinkButton, LineEdit, PrimaryPushButton, PasswordLineEdit
+)
 from PyQt5 import QtCore, QtGui, QtWidgets
-from qfluentwidgets import BodyLabel, CheckBox, HyperlinkButton, LineEdit, PrimaryPushButton, SplitPushButton, FluentIcon, RoundMenu, Action, PasswordLineEdit
 import resource_rc
 
-class Ui_Form(object):
-    def setupUi(self, Form):
-        Form.setObjectName("Form")
-        Form.resize(1250, 809)
-        Form.setMinimumSize(QtCore.QSize(700, 500))
-        self.horizontalLayout = QtWidgets.QHBoxLayout(Form)
+def isWin11():
+    return sys.platform == 'win32' and sys.getwindowsversion().build >= 22000
+
+if isWin11():
+    from qframelesswindow import AcrylicWindow as Window
+else:
+    from qframelesswindow import FramelessWindow as Window
+
+class LoginWindow(Window):
+
+    def __init__(self):
+        super().__init__()
+        self.setupUi()
+        setTheme(Theme.LIGHT)
+        setThemeColor('#023059')
+        self.setTitleBar(SplitTitleBar(self))
+        self.titleBar.raise_()
+
+        self.label.setScaledContents(False)
+        self.setWindowTitle('GESTOR BD PETROJUNIN')
+        self.setWindowIcon(QIcon(":/images/pdvsalogo.png"))
+        self.resize(1000, 650)
+
+        self.windowEffect.setMicaEffect(self.winId(), isDarkMode=isDarkTheme())
+        if not isWin11():
+            color = QColor(25, 33, 42) if isDarkTheme() else QColor(240, 244, 249)
+            self.setStyleSheet(f"LoginWindow{{background: {color.name()}}}")
+
+        if sys.platform == "darwin":
+            self.setSystemTitleBarButtonVisible(True)
+            self.titleBar.minBtn.hide()
+            self.titleBar.maxBtn.hide()
+            self.titleBar.closeBtn.hide()
+
+        self.titleBar.titleLabel.setStyleSheet("""
+            QLabel{
+                background: transparent;
+                font: 13px 'Segoe UI';
+                padding: 0 4px;
+                color: white
+            }
+        """)
+
+        self.widget.setStyleSheet("""
+            QWidget {
+                background-color: #172763;
+                border-radius: 10px;
+                padding: 10px;
+            }
+            QLabel {
+                font: 13px 'Microsoft YaHei';
+            }
+        """)
+
+        desktop = QApplication.desktop().availableGeometry()
+        w, h = desktop.width(), desktop.height()
+        self.move(w//2 - self.width()//2, h//2 - self.height()//2)
+
+    def setupUi(self):
+        self.setObjectName("Form")
+        self.resize(1250, 809)
+        self.setMinimumSize(QtCore.QSize(700, 500))
+        self.horizontalLayout = QtWidgets.QHBoxLayout(self)
         self.horizontalLayout.setContentsMargins(0, 0, 0, 0)
         self.horizontalLayout.setSpacing(0)
         self.horizontalLayout.setObjectName("horizontalLayout")
-        self.label = QtWidgets.QLabel(Form)
+        self.label = QtWidgets.QLabel(self)
         self.label.setText("")
         self.label.setPixmap(QtGui.QPixmap(":/images/login.png"))
         self.label.setScaledContents(True)
         self.label.setObjectName("label")
         self.horizontalLayout.addWidget(self.label)
-        self.widget = QtWidgets.QWidget(Form)
+        self.widget = QtWidgets.QWidget(self)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -64,7 +129,6 @@ class Ui_Form(object):
         self.gridLayout.setColumnStretch(1, 1)
         self.verticalLayout_2.addLayout(self.gridLayout)
 
-        # Reemplazar lineEdit_3 con SplitPushButton
         self.splitpushbutton = SplitPushButton(self.tr("selecciona tu usuario                             "), self.widget, FluentIcon.PEOPLE)
         self.splitpushbutton.setFlyout(self.createStandMenu(self.splitpushbutton))
         self.verticalLayout_2.addWidget(self.splitpushbutton)
@@ -73,9 +137,8 @@ class Ui_Form(object):
         self.label_6.setObjectName("label_6")
         self.verticalLayout_2.addWidget(self.label_6)
 
-        # Reemplazo de lineEdit_4 con PasswordLineEdit
         self.passwordLineEdit = PasswordLineEdit(self.widget)
-        self.passwordLineEdit.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)  # Adaptable al ancho
+        self.passwordLineEdit.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         self.verticalLayout_2.addWidget(self.passwordLineEdit)
 
         spacerItem2 = QtWidgets.QSpacerItem(20, 5, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
@@ -98,8 +161,8 @@ class Ui_Form(object):
         self.verticalLayout_2.addItem(spacerItem5)
         self.horizontalLayout.addWidget(self.widget)
 
-        self.retranslateUi(Form)
-        QtCore.QMetaObject.connectSlotsByName(Form)
+        self.retranslateUi()
+        QtCore.QMetaObject.connectSlotsByName(self)
 
     def createStandMenu(self, button):
         menu = RoundMenu(parent=self.widget)
@@ -109,12 +172,43 @@ class Ui_Form(object):
         ])
         return menu
 
-    def retranslateUi(self, Form):
+    def retranslateUi(self):
         _translate = QtCore.QCoreApplication.translate
-        Form.setWindowTitle(_translate("Form", "Form"))
+        self.setWindowTitle(_translate("Form", "Form"))
         self.label_3.setText(_translate("Form", "usuario"))
         self.label_6.setText(_translate("Form", "contraseña"))
         self.passwordLineEdit.setPlaceholderText(self.tr("ingrese contraseña"))
         self.checkBox.setText(_translate("Form", "mantener sesión iniciada"))
         self.pushButton.setText(_translate("Form", "iniciar sesión"))
         self.pushButton_2.setText(_translate("Form", "olvide contraseña"))
+
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        pixmap = QPixmap(":/images/login.png").scaled(
+            self.label.size(), Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
+        self.label.setPixmap(pixmap)
+
+    def systemTitleBarRect(self, size):
+        """ Returns the system title bar rect, only works for macOS """
+        return QRect(size.width() - 75, 0, 75, size.height())
+
+if __name__ == '__main__':
+    # Configuración para la ejecución principal
+    QApplication.setHighDpiScaleFactorRoundingPolicy(
+        Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
+    )
+    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
+    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
+
+    app = QApplication(sys.argv)
+    
+    # Traducción para internacionalización
+    translator = FluentTranslator(QLocale())
+    app.installTranslator(translator)
+
+    # Crear y mostrar la ventana de inicio de sesión
+    login_window = LoginWindow()
+    login_window.show()
+    
+    # Ejecutar la aplicación
+    sys.exit(app.exec_())
