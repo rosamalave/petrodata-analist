@@ -1,6 +1,6 @@
 from prettytable import PrettyTable
 import psycopg2
-from bd.conexion_bd import base_ddatos
+from models.conexion_bd import base_ddatos
 from datetime import datetime
 from decimal import Decimal
 import os
@@ -27,10 +27,10 @@ class ConsolaDBBackend:
             self.headers = []
             cadenanombres = self.conexion.header(cursor, self.headers, self.esquema, self.tabla)
             #cursor.execute(f"SELECT {cadenanombres} FROM {self.esquema}.{self.tabla} ORDER BY id_{self.tabla} DESC LIMIT 10")
-            cursor.execute(f"SELECT {cadenanombres} FROM {self.esquema}.{self.tabla} ORDER BY fecha DESC LIMIT 105")
+            cursor.execute("SELECT {} FROM {}.{} ORDER BY fecha DESC LIMIT 105".format(cadenanombres,self.esquema,self.tabla))
             self.datos = cursor.fetchall()
             #cursor.execute(f"SELECT * FROM {self.esquema}.{self.tabla} ORDER BY id_{self.tabla} DESC LIMIT 10")
-            cursor.execute(f"SELECT * FROM {self.esquema}.{self.tabla} ORDER BY fecha DESC LIMIT 105")
+            cursor.execute("SELECT * FROM {}.{} ORDER BY fecha DESC LIMIT 105".format(self.esquema,self.tabla))
             self.datosall = cursor.fetchall()
             cursor.close()
         else: 
@@ -67,8 +67,8 @@ class ConsolaDBBackend:
         ultimo_cambio = cambios[0]
         cursor.close()
         print ("filas del cursor: ",cursor.rowcount)
-        print(f"holaa: ",cambios)
-        print(f"hola: ", ultimo_cambio)
+        print("holaa: {}".format(cambios))
+        print("hola: {}".format(ultimo_cambio))
 
         # Descomponer el registro
         id_cambio, tabla_afectada, accion, detalle_json, fecha, usuario, estado = ultimo_cambio
@@ -85,40 +85,40 @@ class ConsolaDBBackend:
         detalle = detalle_json
 
         # Obtener el ID de la fila afectada desde el detalle
-        id_fila_afectada = detalle.get(f"id_{self.tabla}")  # Cambia esto si el campo tiene otro nombre
+        id_fila_afectada = detalle.get("id_{}".format(self.tabla))  # Cambia esto si el campo tiene otro nombre
 
         # Paso 2: Filtrar los valores del detalle según los headers
         detalle_filtrado = [detalle[header] for header in self.headers if header in detalle]
 
         # Paso 3: Deshacer el cambio según la acción
-        cursor.execute(f"ALTER TABLE public.{self.tabla} DISABLE TRIGGER {self.tabla}_historial;")
+        cursor.execute("ALTER TABLE public.{} DISABLE TRIGGER {}_historial;".format(self.tabla,self.tabla))
         self.conexion.conn.commit()
 
         if accion == 'INSERT':
             # Si fue un insert, eliminamos el registro
             self.conexion.eliminar(id_fila_afectada, 'public', tabla_afectada)
             self.cargar_datos()
-            print(f"Registro con ID {id_fila_afectada} eliminado de la tabla {tabla_afectada}.")
+            print("Registro con ID {} eliminado de la tabla {}.".format(id_fila_afectada,tabla_afectada))
             bandera+= 1
         elif accion == 'UPDATE':
             # Si fue un update, restauramos el registro anterior
             self.conexion.editar(id_fila_afectada, None, detalle_filtrado, 'public', tabla_afectada)
             print(detalle_filtrado)
-            print(f"Registro con ID hola {id_fila_afectada} restaurado a su estado anterior en la tabla {tabla_afectada}.")
+            print("Registro con ID hola {id_fila_afectada} restaurado a su estado anterior en la tabla {tabla_afectada}.".format(id_fila_afectada,tabla_afectada))
             self.cargar_datos()
             bandera+= 1
         
         elif accion == 'DELETE':
             # Si fue un delete, insertamos el registro de nuevo
             self.conexion.insertar(id_fila_afectada, detalle_filtrado, 'public', tabla_afectada)
-            print(f"Registro con ID {id_fila_afectada} restaurado en la tabla {tabla_afectada}.")
+            print("Registro con ID {} restaurado en la tabla {}.".format(id_fila_afectada,tabla_afectada))
             self.cargar_datos()
             bandera+= 1
         else:
             print("No se pudo realizar el cambio .")
             bandera=0
 
-        cursor.execute(f"ALTER TABLE public.{self.tabla} ENABLE TRIGGER {self.tabla}_historial;")
+        cursor.execute("ALTER TABLE public.{} ENABLE TRIGGER {}_historial;".format(self.tabla,self.tabla))
 
         self.conexion.conn.commit()
         cursor.close()
@@ -142,7 +142,7 @@ class ConsolaDBBackend:
                     tabla.add_row(["----- " + str(periodo) + " -----"] + [""] * len(self.headers))
                 elif tipo_periodo == "mensual":
                     nombre_mes = fecha.strftime("%B")
-                    tabla.add_row([f"----- {nombre_mes} -----"] + [""] * len(self.headers))
+                    tabla.add_row(["----- {} -----"] + [""] * len(self.headers).format(nombre_mes))
                 ultimo_periodo = periodo
 
             tabla.add_row(fila)
@@ -179,7 +179,7 @@ class ConsolaDBBackend:
         cursor.close()
 
         if not tipo_dato:
-            raise ValueError(f"No se pudo obtener el tipo de dato para la columna '{columna}'.")
+            raise ValueError("No se pudo obtener el tipo de dato para la columna '{}'.".format(columna))
 
         tipo_esperado = tipo_dato[0]
 
@@ -195,22 +195,22 @@ class ConsolaDBBackend:
             try:
                 numero = float(valor)
                 if numero < 0:
-                    raise ValueError(f"El valor '{valor}' no puede ser negativo.")
+                    raise ValueError("El valor '{}' no puede ser negativo.".format(valor))
             except ValueError:
-                raise ValueError(f"El valor '{valor}' no es un número válido.")
+                raise ValueError("El valor '{}' no es un número válido.".format(valor))
             return True
 
         elif tipo_esperado == 'date':
             try:
                 fecha = datetime.strptime(valor, "%Y-%m-%d")
                 if fecha > datetime.today():
-                    raise ValueError(f"El valor '{valor}' no puede ser una fecha futura.")
+                    raise ValueError("El valor '{}' no puede ser una fecha futura.".format(valor))
             except ValueError:
-                raise ValueError(f"El valor '{valor}' no tiene un formato de fecha válido (yyyy-mm-d).")
+                raise ValueError("El valor '{}' no tiene un formato de fecha válido (yyyy-mm-d).".format(valor))
             return True
 
         else:
-            raise ValueError(f"El tipo de dato '{tipo_esperado}' no está soportado.")
+            raise ValueError("El tipo de dato '{}' no está soportado.".format(tipo_esperado))
 
     def agregar_fila(self):
         nueva_fila = [None] * len(self.headers)  # Crear una nueva fila vacía
@@ -337,18 +337,18 @@ class ConsolaDBFrontend:
                     if columna < 0 or columna >= len(self.backend.headers):
                         raise ValueError("Columna fuera de rango.")
 
-                    nuevo_valor = input(f"Ingrese el nuevo valor para '{self.backend.headers[columna]}': ")
+                    nuevo_valor = input("Ingrese el nuevo valor para '{}': ".format(self.backend.headers[columna]))
                     cambios[columna] = nuevo_valor
                     fila[columna] = nuevo_valor  # Actualizar dinámicamente la fila
                 except ValueError as e:
-                    print(f"Error: {e}")
+                    print("Error: {}".format(e))
                     continue
 
             if cambios:
                 self.backend.agregar_datos(operacion, indice, cambios)
 
         except (ValueError, IndexError) as e:
-            print(f"Error: {e}")
+            print("Error: {e}".format(e))
 
     def filtro_por_fecha(self):
         if 'produccion_c' in self.backend.tabla:
@@ -358,7 +358,7 @@ class ConsolaDBFrontend:
 
             try:
                 datos_filtrados = self.backend.filtrar_por_fecha_diaria(fecha_inicio, fecha_fin)
-                print(f"Filtrado entre {fecha_inicio} y {fecha_fin}. Datos:")
+                print("Filtrado entre {} y {}. Datos:".format(fecha_inicio,fecha_fin))
                 self.vista_general(datos_filtrados)
                 input("teclee para seguir")
             except ValueError as e:
@@ -370,7 +370,7 @@ class ConsolaDBFrontend:
             fecha_fin = input("Ingrese el mes de fin (mes-año): ")
             try:
                 datos_filtrados = self.backend.filtrar_por_fecha_mensual(fecha_inicio, fecha_fin)
-                print(f"Filtrado entre {fecha_inicio} y {fecha_fin}. Datos:")
+                print("Filtrado entre {} y {}. Datos:".format(fecha_inicio,fecha_fin))
                 self.vista_general(datos_filtrados)
                 input("teclee para seguir")
             except ValueError as e:
@@ -380,16 +380,16 @@ class ConsolaDBFrontend:
         print("\nSeleccione el campo numérico para aplicar el filtro:")
         campos_numericos = [header for header in self.backend.headers if header not in ['fecha', 'id']]
         for i, campo in enumerate(campos_numericos):
-            print(f"{i + 1}) {campo}")
+            print("{}) {}".format(i + 1,campo))
 
         opcion = input("\nSeleccione una opción: ")
         try:
             campo_seleccionado = campos_numericos[int(opcion) - 1]
-            valor_min = input(f"Ingrese el valor mínimo para {campo_seleccionado}: ")
-            valor_max = input(f"Ingrese el valor máximo para {campo_seleccionado}: ")
+            valor_min = input("Ingrese el valor mínimo para {}: ".format(campo_seleccionado))
+            valor_max = input("Ingrese el valor máximo para {}: ".format(campo_seleccionado))
 
             datos_filtrados = self.backend.filtrar_por_valores(campo_seleccionado, valor_min, valor_max)
-            print(f"Filtrado entre {valor_min} y {valor_max}. Datos:")
+            print("Filtrado entre {} y {}. Datos:".format(valor_min,valor_max))
             self.vista_general(datos_filtrados)
             input("teclee para seguir")
         except (ValueError, IndexError) as e:
@@ -399,13 +399,13 @@ class ConsolaDBFrontend:
     def eliminar_fila(self):
         print("Seleccione una fila para eliminar:")
         for i, fila in enumerate(self.backend.datos):  # Cambiar a self.backend.datos
-            print(f"{i}) {fila}")
+            print("{}) {}".format(i,fila))
         indice = int(input("Índice: "))
         try:
             self.backend.eliminar_fila(indice)  # Llamada al método del backend
             print("Fila eliminada.")
         except (IndexError, ValueError) as e:
-            print(f"Error: {e}")
+            print("Error: {}".format(e))
 
     def opciones_separacion(self):
 

@@ -236,7 +236,7 @@ class Ui_Form(object):
             # Si no estamos en modo de edición, activamos los botones de editar y eliminar
             self.indice_seleccionado = item.row()  # Obtener el índice de la fila seleccionada
             self.tabla.selectRow(self.indice_seleccionado)  # Seleccionar la fila completa
-            print(f"Fila seleccionada: {self.indice_seleccionado}")
+            print("Fila seleccionada: {}".format(self.indice_seleccionado))
             fila_actual = tuple(self.tabla.item(self.indice_seleccionado, column).text() for column in range(self.tabla.columnCount()))
             self.backupfilas.append(fila_actual)  # Almacenar en la lista de backup
             self.editar_fila_button.setVisible(True)
@@ -266,7 +266,7 @@ class Ui_Form(object):
             for column, valor in enumerate(fila_anterior):
                 item = QtWidgets.QTableWidgetItem(str(valor))
                 self.tabla.setItem(self.indice_seleccionado, column, item)  # Restaurar el valor en la tabla
-            print(f"Deshacer cambios en la fila {self.indice_seleccionado}.")
+            print("Deshacer cambios en la fila {}.".format(self.indice_seleccionado))
         self.reiniciar_interfaz()
 
     def eliminar_fila(self):
@@ -276,7 +276,7 @@ class Ui_Form(object):
                 self.conexion.eliminar_fila(self.indice_seleccionado)  # Llamada al método del backend
                 print("Fila eliminada.")
             except (IndexError, ValueError) as e:
-                print(f"Error: {e}")
+                print("Error: {}".format(e))
         self.reiniciar_interfaz()
         self.cargar_datos(self.conexion.datos)
         
@@ -293,7 +293,7 @@ class Ui_Form(object):
         self.indice_seleccionado = self.tabla.currentRow()  # Obtener el índice de la fila seleccionada
         if self.indice_seleccionado != -1:
             self.tabla.selectRow(self.indice_seleccionado)  # Seleccionar la fila
-            print(f"Fila seleccionada para editar: {self.indice_seleccionado}")
+            print("Fila seleccionada para editar: {}".format(self.indice_seleccionado))
 
         self.tabla.setEditTriggers(QtWidgets.QAbstractItemView.DoubleClicked)  # Permitir edición al hacer doble clic
         self.guardar_button.setVisible(True)  # Mostrar botón de guardar
@@ -329,12 +329,12 @@ class Ui_Form(object):
             else:
                 self.conexion.agregar_datos(self.conexion.insertar_fila, self.indice_seleccionado, cambios)
                 self.conexion.nuevas_filas_indices.remove(self.indice_seleccionado)
-            print(f"Cambios guardados en la fila {self.indice_seleccionado}.")
+            print("Cambios guardados en la fila {}.".format(self.indice_seleccionado))
             # Recargar datos después de guardar
             self.cargar_datos(self.conexion.datos)
 
         except (ValueError, IndexError) as e:
-            print(f"Error: {e}")
+            print("Error: {}".format(e))
         finally:
             self.reiniciar_interfaz()
             self.deshacer_button.setVisible(True)
@@ -342,14 +342,14 @@ class Ui_Form(object):
     def filtro_por_valores(self, header, valor_min, valor_max):
 
         datos_filtrados = self.conexion.filtrar_por_valores(header,valor_min,valor_max)
-        print(f"Filtrado entre {valor_min} y {valor_max}. Datos:")
+        print("Filtrado entre {} y {}. Datos:".format(valor_min,valor_max))
         self.cargar_datos(datos_filtrados)
 
     def filtro_por_fecha(self):
         fecha_inicio = self.fecha_inicio.date().toString("dd-MM-yyyy")
         fecha_fin = self.fecha_fin.date().toString("dd-MM-yyyy")
         datos_filtrados = self.conexion.filtro_por_fecha(fecha_inicio, fecha_fin)
-        print(f"Filtrado entre {fecha_inicio} y {fecha_fin}. Datos:")
+        print("Filtrado entre {} y {}. Datos:".format(fecha_inicio,fecha_fin))
         self.cargar_datos(datos_filtrados)
 
 
@@ -460,7 +460,7 @@ class ControlesPaginacionYPeriodicidad(QtWidgets.QWidget):
 
     def actualizar_botones_paginacion(self):
         self.boton_pagina_actual.setText(str(self.pagina_actual))
-        self.boton_pagina_siguiente.setText(f"{self.pagina_actual + 1}")
+        self.boton_pagina_siguiente.setText("{}".format(self.pagina_actual + 1))
 
         # Mostrar botones de paginación solo si el botón de paginación ha sido activado y no es "Todos"
         if self.boton_paginacion_activado:
@@ -475,7 +475,7 @@ class ControlesPaginacionYPeriodicidad(QtWidgets.QWidget):
             self.boton_pagina_anterior.setVisible(False)
         else:
             self.boton_2_paginas_menos.setVisible(True)
-            self.boton_pagina_anterior.setText(f"{self.pagina_actual - 1}")  # Actualizar el texto del botón anterior
+            self.boton_pagina_anterior.setText("{}".format(self.pagina_actual - 1))  # Actualizar el texto del botón anterior
             self.boton_pagina_anterior.setVisible(True)
 
             tamano_paginas = self.calcular_paginacion(self.combo_periodicidad.currentText(), int(self.combo_cantidad.currentText()))

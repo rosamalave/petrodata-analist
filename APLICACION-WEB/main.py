@@ -31,7 +31,7 @@ class MainWindow(QMainWindow):
         self.tab_widget.removeTab(0)
 
     def open_table_tab(self, esquema, tabla):
-        tab_name = f"{esquema}.{tabla}"
+        tab_name = "{}.{}".format(esquema,tabla)
 
         # Verificar si ya está abierta
         if tab_name in self.open_tabs:
@@ -46,7 +46,7 @@ class MainWindow(QMainWindow):
             self.tab_widget.setCurrentWidget(table_view)
             self.open_tabs[tab_name] = index
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"No se pudo abrir la tabla: {str(e)}")
+            QMessageBox.critical(self, "Error: No se pudo abrir la tabla: {{}}".format(str,e))
 
     def closeEvent(self, event):
         # Asegurarse de que el cierre de sesión sea seguro

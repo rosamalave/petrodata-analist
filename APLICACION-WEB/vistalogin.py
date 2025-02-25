@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QHBoxLayout
-from bd.conexion_bd import base_ddatos
+from models.conexion_bd import base_ddatos
 from pruebabackend import ConsolaDBBackend
 from homepage import HomePage
 class vistalogin(QWidget):
@@ -57,7 +57,7 @@ class vistalogin(QWidget):
         self.usuario = user_type
 
         # Muestra el mensaje de bienvenida
-        self.welcome_label.setText(f"Bienvenido, {user_type.capitalize()}!")
+        self.welcome_label.setText("Bienvenido, {}!".format(user_type.capitalize()))
         self.welcome_label.setVisible(True)
 
         # Muestra los campos de contraseña y botones
