@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QHBoxLayout
 from models.conexion_bd import base_ddatos
-from pruebabackend import ConsolaDBBackend
+from controllers.pruebabackend import ConsolaDBBackend
 from homepage import HomePage
 class vistalogin(QWidget):
     def __init__(self, on_login):

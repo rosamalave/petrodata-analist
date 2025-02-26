@@ -1,5 +1,5 @@
 from prettytable import PrettyTable
-import psycopg2
+import pg8000
 from models.conexion_bd import base_ddatos
 from datetime import datetime
 from decimal import Decimal
@@ -18,113 +18,120 @@ class ConsolaDBBackend:
         self.datos = []  # Sin ID
         self.datosall = []  # Con ID
         self.headers = []
-        self.usuario=usuario
+        self.usuario = usuario
         self.nuevas_filas_indices = []  # Lista para almacenar índices de filas nuevas
 
     def cargar_datos(self):
         if self.conexion.conn:
-            cursor = self.conexion.conn.cursor()
-            self.headers = []
-            cadenanombres = self.conexion.header(cursor, self.headers, self.esquema, self.tabla)
-            #cursor.execute(f"SELECT {cadenanombres} FROM {self.esquema}.{self.tabla} ORDER BY id_{self.tabla} DESC LIMIT 10")
-            cursor.execute("SELECT {} FROM {}.{} ORDER BY fecha DESC LIMIT 105".format(cadenanombres,self.esquema,self.tabla))
-            self.datos = cursor.fetchall()
-            #cursor.execute(f"SELECT * FROM {self.esquema}.{self.tabla} ORDER BY id_{self.tabla} DESC LIMIT 10")
-            cursor.execute("SELECT * FROM {}.{} ORDER BY fecha DESC LIMIT 105".format(self.esquema,self.tabla))
-            self.datosall = cursor.fetchall()
-            cursor.close()
-        else: 
-            pass
+            try:
+                self.headers = []
+                cadenanombres = self.conexion.header(self.conexion.conn, self.headers, self.esquema, self.tabla)
+
+                # Ejecutar la primera consulta y almacenar los datos sin ID
+                query1 = "SELECT {} FROM {}.{} ORDER BY fecha DESC LIMIT 105".format(cadenanombres, self.esquema, self.tabla)
+                self.datos = self.conexion.conn.run(query1)
+
+                # Ejecutar la segunda consulta y almacenar los datos con ID
+                query2 = "SELECT * FROM {}.{} ORDER BY fecha DESC LIMIT 105".format(self.esquema, self.tabla)
+                self.datosall = self.conexion.conn.run(query2)
+
+            except Exception as e:
+                print("Error al cargar datos: {}".format(e))
 
     def deshacer_ultimo_cambio(self):
-        #0 falso #1verdadero #2ocultar (1 verdadero + 1 ocultar)
-        bandera=0
-        # Paso 1: Ejecutar la consulta para obtener el historial de modificaciones
-        cursor = self.conexion.conn.cursor()
+        # 0: falso, 1: verdadero, 2: ocultar (1 verdadero + 1 ocultar)
+        bandera = 0
 
-        query = f"""
-            SELECT *
-            FROM public2.historial_modificaciones
-            WHERE usuario = %s
-            AND tabla_afectada = %s
-            AND estado = 'vigente'  -- Condición añadida
-            AND accion NOT IN ('Inicio de sesion', 'Cierre de sesion')
-            AND fecha >= (
-                SELECT MAX(fecha)
+        try:
+            # Paso 1: Ejecutar la consulta para obtener el historial de modificaciones
+            query = """
+                SELECT *
                 FROM public2.historial_modificaciones
-                WHERE usuario = %s AND accion = 'Inicio de sesion'
-            )
-            ORDER BY fecha DESC
-            LIMIT 2;
-        """
-        cursor.execute(query, (self.usuario, self.tabla, self.usuario))
+                WHERE usuario = %s
+                AND tabla_afectada = %s
+                AND estado = 'vigente'  -- Condición añadida
+                AND accion NOT IN ('Inicio de sesion', 'Cierre de sesion')
+                AND fecha >= (
+                    SELECT MAX(fecha)
+                    FROM public2.historial_modificaciones
+                    WHERE usuario = %s AND accion = 'Inicio de sesion'
+                )
+                ORDER BY fecha DESC
+                LIMIT 2;
+            """
+            cambios = self.conexion.conn.run(query, (self.usuario, self.tabla, self.usuario))
 
-        # Obtener el último cambio
-        
-        cambios=cursor.fetchall()
-        if cursor.rowcount == 1:
-            bandera = 2
-        ultimo_cambio = cambios[0]
-        cursor.close()
-        print ("filas del cursor: ",cursor.rowcount)
-        print("holaa: {}".format(cambios))
-        print("hola: {}".format(ultimo_cambio))
+            # Si no hay cambios registrados, salir de la función
+            if not cambios:
+                print("No hay cambios recientes para deshacer.")
+                return bandera
+            
+            # Si hay un solo cambio registrado, marcar como "oculto"
+            if len(cambios) == 1:
+                bandera = 2
+            
+            ultimo_cambio = cambios[0]
 
-        # Descomponer el registro
-        id_cambio, tabla_afectada, accion, detalle_json, fecha, usuario, estado = ultimo_cambio
-        
-        # Marcar el cambio como "deshecho"
-        cursor = self.conexion.conn.cursor()
-        cursor.execute("""
-            UPDATE public2.historial_modificaciones
-            SET estado = 'deshecho'  -- Cambiar el estado a 'deshecho'
-            WHERE id = %s;
-        """, (id_cambio,))
+            print("Cantidad de filas obtenidas: {}".format(len(cambios)))
+            print("Datos obtenidos: {}".format(cambios))
+            print("Último cambio: {}".format(ultimo_cambio))
 
-        # Convertir el detalle JSONB a un diccionario
-        detalle = detalle_json
+            # Descomponer el registro (pg8000 devuelve listas)
+            id_cambio, tabla_afectada, accion, detalle_json, fecha, usuario, estado = ultimo_cambio
 
-        # Obtener el ID de la fila afectada desde el detalle
-        id_fila_afectada = detalle.get("id_{}".format(self.tabla))  # Cambia esto si el campo tiene otro nombre
+            # Marcar el cambio como "deshecho"
+            self.conexion.conn.run("""
+                UPDATE public2.historial_modificaciones
+                SET estado = 'deshecho'
+                WHERE id = %s;
+            """, (id_cambio,))
 
-        # Paso 2: Filtrar los valores del detalle según los headers
-        detalle_filtrado = [detalle[header] for header in self.headers if header in detalle]
+            # Convertir el detalle JSONB a un diccionario
+            detalle = detalle_json
 
-        # Paso 3: Deshacer el cambio según la acción
-        cursor.execute("ALTER TABLE public.{} DISABLE TRIGGER {}_historial;".format(self.tabla,self.tabla))
-        self.conexion.conn.commit()
+            # Obtener el ID de la fila afectada desde el detalle
+            id_fila_afectada = detalle.get("id_{}".format(self.tabla))
 
-        if accion == 'INSERT':
-            # Si fue un insert, eliminamos el registro
-            self.conexion.eliminar(id_fila_afectada, 'public', tabla_afectada)
-            self.cargar_datos()
-            print("Registro con ID {} eliminado de la tabla {}.".format(id_fila_afectada,tabla_afectada))
-            bandera+= 1
-        elif accion == 'UPDATE':
-            # Si fue un update, restauramos el registro anterior
-            self.conexion.editar(id_fila_afectada, None, detalle_filtrado, 'public', tabla_afectada)
-            print(detalle_filtrado)
-            print("Registro con ID hola {id_fila_afectada} restaurado a su estado anterior en la tabla {tabla_afectada}.".format(id_fila_afectada,tabla_afectada))
-            self.cargar_datos()
-            bandera+= 1
-        
-        elif accion == 'DELETE':
-            # Si fue un delete, insertamos el registro de nuevo
-            self.conexion.insertar(id_fila_afectada, detalle_filtrado, 'public', tabla_afectada)
-            print("Registro con ID {} restaurado en la tabla {}.".format(id_fila_afectada,tabla_afectada))
-            self.cargar_datos()
-            bandera+= 1
-        else:
-            print("No se pudo realizar el cambio .")
-            bandera=0
+            # Paso 2: Filtrar los valores del detalle según los headers
+            detalle_filtrado = [detalle[header] for header in self.headers if header in detalle]
 
-        cursor.execute("ALTER TABLE public.{} ENABLE TRIGGER {}_historial;".format(self.tabla,self.tabla))
+            # Desactivar triggers antes de modificar datos
+            self.conexion.conn.run("ALTER TABLE public.{} DISABLE TRIGGER {}_historial;".format(self.tabla, self.tabla))
 
-        self.conexion.conn.commit()
-        cursor.close()
+            if accion == 'INSERT':
+                # Si fue un insert, eliminar el registro
+                self.conexion.eliminar(id_fila_afectada, 'public', tabla_afectada)
+                self.cargar_datos()
+                print("Registro con ID {} eliminado de la tabla {}.".format(id_fila_afectada, tabla_afectada))
+                bandera += 1
+
+            elif accion == 'UPDATE':
+                # Si fue un update, restaurar el registro anterior
+                self.conexion.editar(id_fila_afectada, None, detalle_filtrado, 'public', tabla_afectada)
+                print(detalle_filtrado)
+                print("Registro con ID {} restaurado a su estado anterior en la tabla {}.".format(id_fila_afectada, tabla_afectada))
+                self.cargar_datos()
+                bandera += 1
+
+            elif accion == 'DELETE':
+                # Si fue un delete, insertar nuevamente el registro
+                self.conexion.insertar(id_fila_afectada, detalle_filtrado, 'public', tabla_afectada)
+                print("Registro con ID {} restaurado en la tabla {}.".format(id_fila_afectada, tabla_afectada))
+                self.cargar_datos()
+                bandera += 1
+
+            else:
+                print("No se pudo realizar el cambio.")
+                bandera = 0
+
+            # Reactivar triggers después de modificar datos
+            self.conexion.conn.run("ALTER TABLE public.{} ENABLE TRIGGER {}_historial;".format(self.tabla, self.tabla))
+
+        except Exception as e:
+            print("Error al deshacer el último cambio: {}".format(e))
+            bandera = 0
+
         return bandera
-
-
 
     def aplicar_separador(self, tipo_periodo, tabla, filas_con_indices):
 
@@ -142,7 +149,7 @@ class ConsolaDBBackend:
                     tabla.add_row(["----- " + str(periodo) + " -----"] + [""] * len(self.headers))
                 elif tipo_periodo == "mensual":
                     nombre_mes = fecha.strftime("%B")
-                    tabla.add_row(["----- {} -----"] + [""] * len(self.headers).format(nombre_mes))
+                    tabla.add_row(["----- {} -----".format(nombre_mes)] + [""] * len(self.headers))
                 ultimo_periodo = periodo
 
             tabla.add_row(fila)
@@ -167,7 +174,7 @@ class ConsolaDBBackend:
 
         # Consultar tipo de dato directamente desde la base de datos
         cursor = self.conexion.conn.cursor()
-        query = f"""
+        query = """
         SELECT data_type
         FROM information_schema.columns
         WHERE table_schema = %s
@@ -181,7 +188,7 @@ class ConsolaDBBackend:
         if not tipo_dato:
             raise ValueError("No se pudo obtener el tipo de dato para la columna '{}'.".format(columna))
 
-        tipo_esperado = tipo_dato[0]
+        tipo_esperado = tipo_dato[0]  # pg8000 devuelve listas, así que esto sigue funcionando
 
         # Validar si el valor es nulo
         if valor is None or str(valor).strip() == "":
@@ -211,17 +218,16 @@ class ConsolaDBBackend:
 
         else:
             raise ValueError("El tipo de dato '{}' no está soportado.".format(tipo_esperado))
-
+        
     def agregar_fila(self):
         nueva_fila = [None] * len(self.headers)  # Crear una nueva fila vacía
         self.datos.append(nueva_fila)  # Agregar la nueva fila a los datos
         self.nuevas_filas_indices.append(len(self.datos) - 1)  # Guardar el índice de la nueva fila
 
-
     def eliminar_fila(self, indice_superficial):
         if indice_superficial < 0:
             raise IndexError("Índice fuera de rango.")
-    
+
         # Verificar si la fila a eliminar es una fila nueva
         if indice_superficial in self.nuevas_filas_indices:  # Comprobar si el índice está en nuevas filas
             # Eliminar solo de self.datos y de nuevas_filas_indices
@@ -239,10 +245,8 @@ class ConsolaDBBackend:
     def filtro_por_fecha(self, fecha_inicio, fecha_fin):
         if 'produccion_c' in self.tabla:
             datos_filtrados = self.filtrar_por_fecha_diaria(fecha_inicio, fecha_fin)
-
         elif any(x in self.tabla for x in ['produccion_g', 'potencial', 'diferida']):
             datos_filtrados = self.filtrar_por_fecha_mensual(fecha_inicio, fecha_fin)
-        
         return datos_filtrados 
 
     def filtrar_por_fecha_diaria(self, fecha_inicio, fecha_fin):
