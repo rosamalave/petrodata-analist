@@ -1,5 +1,4 @@
 import pg8000
-from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem
 from datetime import datetime
 from decimal import Decimal
 import sys
@@ -16,11 +15,13 @@ class base_ddatos():
         # Conexión inicial para verificar credenciales en la tabla usuario
         try:
             # Conexión temporal con usuario maestro para verificar credenciales
-            conn_temp = pg8000.connect(
-                host="localhost",
-                database="juninpruebas",
+            conn_temp = pg8000.connect(                
                 user="postgres",
-                password="Junindata"
+                host="localhost",
+                port=5433,
+                database="juninpruebas",
+                password="JUNINDATA",
+                ssl=False,
             )
             cursor = conn_temp.cursor()
 
@@ -38,14 +39,16 @@ class base_ddatos():
             # Si las credenciales son válidas, intentar conexión con PostgreSQL usando esas credenciales
             try:
                 self.conn = pg8000.connect(
-                    host="localhost",
-                    database="juninpruebas",
                     user=usuario,
-                    password=contrasena
+                    host="localhost",
+                    port=5433,
+                    database="juninpruebas",
+                    password=contrasena,
+                    ssl=False,
                 )
                 print("Sesión iniciada correctamente.")
                 cursor = self.conn.cursor()
-                cursor.execute("SELECT public2.registrar_inicio_sesion();")
+                cursor.execute("SELECT public.registrar_inicio_sesion();")
                 self.conn.commit()
                 cursor.close()
                 return True
@@ -53,7 +56,7 @@ class base_ddatos():
                 print("Error al conectar a PostgreSQL: {}".format(e))
                 return False
             
-        except Exception as e:
+        except self.conn.OperationalError as e:
             print("Error durante el inicio de sesión: {}".format(e))
             return False
 
@@ -65,7 +68,7 @@ class base_ddatos():
             try:
                 cursor = self.conn.cursor()
                 # Registrar el cierre de sesión si existe un método o función para ello
-                cursor.execute("SELECT public2.registrar_cierre_sesion();")
+                cursor.execute("SELECT public.registrar_cierre_sesion();")
                 self.conn.commit()
                 cursor.close()
                 print("Sesión de {} cerrada exitosamente.".format(usuario))
@@ -125,20 +128,39 @@ class base_ddatos():
         cursor = self.conn.cursor()
         id = self.buscar(cursor, id, esquema, tabla)
         if id != -1:
-            cursor.execute("DELETE FROM {}.{} WHERE id_{} = {}".format(esquema, tabla, tabla, id))
-        self.conn.commit()
+            try:
+                query="SET session_replication_role = 'replica';" 
+                cursor.execute(query) 
+                query="DELETE FROM {}.{} WHERE id_{} = {}".format(esquema, tabla, tabla, id)
+                cursor.execute(query)
+                query="SET session_replication_role = 'replica';"
+                cursor.execute(query)
+                self.conn.commit()
+            except Exception as e:
+                print("Error al eliminar de la bd: {}".format(e))
+            
+        else: 
+            print("No se pudo encontrar la fila a eliminar")
         cursor.close()
 
     def buscar(self, cursor, id, esquema, tabla):
-        cursor.execute("SELECT * FROM {}.{} WHERE id_{} = {}".format(esquema, tabla, tabla, id))
-        if cursor.rowcount == 0 or cursor.rowcount == -1:
+
+        query="SELECT * FROM {}.{} WHERE id_{} = {}".format(esquema, tabla, tabla, id)
+
+        cursor.execute(query)
+        filaid=cursor.fetchall()
+        print("{}=={}".format(filaid[0][0],id))
+
+        #if cursor.rowcount == 0 or cursor.rowcount == -1:
+        if filaid[0][0]!=id:
             print("fila no existe.")
             return -1
         else:
+            print("id encontrado en buscar: {}".format(id))
             return id
         
     def conversionformatotabla(self, cursor, nuevaf, esquema, tabla):
-        cursor.execute("SELECT data_type FROM information_schema.columns WHERE table_schema = '{}' AND table_name = '{}' AND column_name NOT LIKE 'id%'".format(esquema, tabla))
+        cursor.execute("SELECT data_type FROM information_schema.columns WHERE table_schema = '{}' AND table_name = '{}' AND column_name NOT LIKE 'id%%'".format(esquema, tabla))
         bdtype = cursor.fetchall()
         print("Fila seleccionada: {}".format(nuevaf))
         print("bdtype: {}".format(bdtype))
@@ -158,7 +180,7 @@ class base_ddatos():
             j += 1
 
     def header(self, cursor, nombres, esquema, tabla):
-        cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_schema = '{}' AND table_name = '{}' AND column_name NOT LIKE 'id%'".format(esquema, tabla))
+        cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_schema = '{}' AND table_name = '{}' AND column_name NOT LIKE 'id%%'".format(esquema, tabla))
 
         #extrayendo headers en un vector
         for col in cursor.fetchall():

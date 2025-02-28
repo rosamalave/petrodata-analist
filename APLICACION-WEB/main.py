@@ -1,7 +1,7 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QMessageBox
-from vistalogin import vistalogin
-from homepage import HomePage
+from views.vistalogin import vistalogin
+from views.homepage import HomePage
 
 class MainWindow(QMainWindow):
     

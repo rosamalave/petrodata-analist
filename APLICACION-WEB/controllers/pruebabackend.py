@@ -24,17 +24,28 @@ class ConsolaDBBackend:
     def cargar_datos(self):
         if self.conexion.conn:
             try:
+                
                 self.headers = []
-                cadenanombres = self.conexion.header(self.conexion.conn, self.headers, self.esquema, self.tabla)
+                cursor = self.conexion.conn.cursor()
+                
+                cadenanombres = self.conexion.header(cursor, self.headers, self.esquema, self.tabla)
 
                 # Ejecutar la primera consulta y almacenar los datos sin ID
-                query1 = "SELECT {} FROM {}.{} ORDER BY fecha DESC LIMIT 105".format(cadenanombres, self.esquema, self.tabla)
-                self.datos = self.conexion.conn.run(query1)
-
-                # Ejecutar la segunda consulta y almacenar los datos con ID
-                query2 = "SELECT * FROM {}.{} ORDER BY fecha DESC LIMIT 105".format(self.esquema, self.tabla)
-                self.datosall = self.conexion.conn.run(query2)
-
+                query1 = "SELECT {} FROM {}.{} ORDER BY fecha DESC LIMIT 10".format(cadenanombres,self.esquema,self.tabla) 
+                print (query1)
+                cursor.execute(query1)  # `None` porque no hay parámetros
+                self.datos = [list(row) for row in cursor.fetchall()]
+                #self.datos = cursor.fetchall()  # Obtener los resultados
+                
+                #Ejecutar la segunda consulta y almacenar los datos con ID
+                query2 = "SELECT * FROM {}.{} ORDER BY fecha DESC LIMIT 10".format(self.esquema,self.tabla)
+                cursor.execute(query2)  # `None` porque no hay parámetros
+                self.datosall = [list(row) for row in cursor.fetchall()] 
+                #self.datosall = cursor.fetchall()  # Obtener los resultados
+                print("datos all")
+                print(self.datosall)
+                cursor.close()  # Cerrar el cursor después de usarlo
+                
             except Exception as e:
                 print("Error al cargar datos: {}".format(e))
 
@@ -47,19 +58,23 @@ class ConsolaDBBackend:
             query = """
                 SELECT *
                 FROM public2.historial_modificaciones
-                WHERE usuario = %s
-                AND tabla_afectada = %s
+                WHERE usuario = {}
+                AND tabla_afectada = {}
                 AND estado = 'vigente'  -- Condición añadida
                 AND accion NOT IN ('Inicio de sesion', 'Cierre de sesion')
                 AND fecha >= (
                     SELECT MAX(fecha)
                     FROM public2.historial_modificaciones
-                    WHERE usuario = %s AND accion = 'Inicio de sesion'
+                    WHERE usuario = {} AND accion = 'Inicio de sesion'
                 )
                 ORDER BY fecha DESC
                 LIMIT 2;
-            """
-            cambios = self.conexion.conn.run(query, (self.usuario, self.tabla, self.usuario))
+            """.format(self.usuario, self.tabla, self.usuario)
+
+            cursor = self.conexion.conn.cursor()
+            cursor.execute(query)
+            cambios = cursor.fetchall()
+            cursor.close()  # Cerrar el cursor después de obtener los resultados
 
             # Si no hay cambios registrados, salir de la función
             if not cambios:
@@ -80,11 +95,14 @@ class ConsolaDBBackend:
             id_cambio, tabla_afectada, accion, detalle_json, fecha, usuario, estado = ultimo_cambio
 
             # Marcar el cambio como "deshecho"
-            self.conexion.conn.run("""
+            cursor = self.conexion.conn.cursor()
+            cursor.execute("""
                 UPDATE public2.historial_modificaciones
                 SET estado = 'deshecho'
                 WHERE id = %s;
             """, (id_cambio,))
+            self.conexion.conn.commit()
+            cursor.close()
 
             # Convertir el detalle JSONB a un diccionario
             detalle = detalle_json
@@ -96,7 +114,10 @@ class ConsolaDBBackend:
             detalle_filtrado = [detalle[header] for header in self.headers if header in detalle]
 
             # Desactivar triggers antes de modificar datos
-            self.conexion.conn.run("ALTER TABLE public.{} DISABLE TRIGGER {}_historial;".format(self.tabla, self.tabla))
+            cursor = self.conexion.conn.cursor()
+            cursor.execute("ALTER TABLE public.{} DISABLE TRIGGER {}_historial;".format(self.tabla, self.tabla))
+            self.conexion.conn.commit()
+            cursor.close()
 
             if accion == 'INSERT':
                 # Si fue un insert, eliminar el registro
@@ -125,7 +146,10 @@ class ConsolaDBBackend:
                 bandera = 0
 
             # Reactivar triggers después de modificar datos
-            self.conexion.conn.run("ALTER TABLE public.{} ENABLE TRIGGER {}_historial;".format(self.tabla, self.tabla))
+            cursor = self.conexion.conn.cursor()
+            cursor.execute("ALTER TABLE public.{} ENABLE TRIGGER {}_historial;".format(self.tabla, self.tabla))
+            self.conexion.conn.commit()
+            cursor.close()
 
         except Exception as e:
             print("Error al deshacer el último cambio: {}".format(e))
@@ -169,6 +193,26 @@ class ConsolaDBBackend:
 
     def insertar_fila(self, _, nueva_fila):
         self.conexion.insertar(None, nueva_fila, self.esquema, self.tabla)
+
+    def eliminar_fila(self, indice_superficial):
+        if indice_superficial < 0:
+            raise IndexError("Índice fuera de rango.")
+
+        # Verificar si la fila a eliminar es una fila nueva
+        if indice_superficial in self.nuevas_filas_indices:  # Comprobar si el índice está en nuevas filas
+            # Eliminar solo de self.datos y de nuevas_filas_indices
+            self.datos.pop(indice_superficial)
+            self.nuevas_filas_indices.remove(indice_superficial)
+        else:
+            # Si no es una fila nueva, eliminar de la base de datos
+            print("id superficial: {}".format(indice_superficial))
+            id_real = self.datosall[indice_superficial][0]
+            print("id real: {}".format(id_real))
+            self.conexion.eliminar(id_real, self.esquema, self.tabla)
+            
+            # También eliminar de self.datos si está presente
+            self.datos.pop(indice_superficial)
+        self.cargar_datos()
 
     def validar(self, valor, esquema, tabla, columna, permite_nulo=False):
 
@@ -224,23 +268,7 @@ class ConsolaDBBackend:
         self.datos.append(nueva_fila)  # Agregar la nueva fila a los datos
         self.nuevas_filas_indices.append(len(self.datos) - 1)  # Guardar el índice de la nueva fila
 
-    def eliminar_fila(self, indice_superficial):
-        if indice_superficial < 0:
-            raise IndexError("Índice fuera de rango.")
 
-        # Verificar si la fila a eliminar es una fila nueva
-        if indice_superficial in self.nuevas_filas_indices:  # Comprobar si el índice está en nuevas filas
-            # Eliminar solo de self.datos y de nuevas_filas_indices
-            self.datos.pop(indice_superficial)
-            self.nuevas_filas_indices.remove(indice_superficial)
-        else:
-            # Si no es una fila nueva, eliminar de la base de datos
-            id_real = self.datosall[indice_superficial][0]
-            self.conexion.eliminar(id_real, self.esquema, self.tabla)
-            
-            # También eliminar de self.datos si está presente
-            self.datos.pop(indice_superficial)
-        self.cargar_datos()
 
     def filtro_por_fecha(self, fecha_inicio, fecha_fin):
         if 'produccion_c' in self.tabla:
@@ -279,13 +307,33 @@ class ConsolaDBBackend:
         return [fila for fila in self.datos if valor_min <= fila[indice_campo] <= valor_max]
 
 class ConsolaDBFrontend:
+    def __init__(self):
+        self.backend = None  # Se inicializa como None hasta que se complete el inicio de sesión
+        self.iniciar_sesion()
+        self.menu_principal()
 
-    def __init__(self, backend):
-        self.backend = backend
+    def iniciar_sesion(self):
+        print("--- Inicio de sesión ---")
+        sesion=False
+        while sesion==False:
+            self.usuario = input("Usuario: ")
+            contraseña = input("Contraseña: ")
+            tabla = input("Tabla: ")
+
+            
+            conexion = base_ddatos()
+            if conexion.verificar_iniciar_sesion(self.usuario, contraseña):
+                self.backend = ConsolaDBBackend(conexion, self.usuario, "public", tabla)
+                self.backend.cargar_datos()
+                print("Inicio de sesión exitoso.")
+                sesion=True
+            else:
+                print("Credenciales incorrectas. Intente de nuevo.")
+           
 
     def menu_principal(self):
         while True:
-            limpiar_consola()
+            #limpiar_consola()
             self.vista_general(self.backend.datos)
             print("\nMenú Principal:")
             print("1) Agregar fila")
@@ -294,7 +342,7 @@ class ConsolaDBFrontend:
             print("4) Filtro por fecha")
             print("5) Filtro por valores")
             print("6) Opciones de Separación")
-            print("7) Salir")
+            print("7) Cerrar sesión y salir")
             opcion = input("\nSeleccione una opción: ")
 
             if opcion == "1":
@@ -311,10 +359,16 @@ class ConsolaDBFrontend:
             elif opcion == "6":
                 self.opciones_separacion()
             elif opcion == "7":
+                self.cerrar_sesion()
                 print("Saliendo del programa.")
                 break
             else:
                 print("Opción inválida. Intente de nuevo.")
+
+    def cerrar_sesion(self):
+        if self.backend:
+            self.backend.conexion.cerrar_sesion(self.usuario)
+            print("Sesión cerrada correctamente.")
 
     def gestionar_fila(self):
         try:
@@ -404,7 +458,10 @@ class ConsolaDBFrontend:
         print("Seleccione una fila para eliminar:")
         for i, fila in enumerate(self.backend.datos):  # Cambiar a self.backend.datos
             print("{}) {}".format(i,fila))
-        indice = int(input("Índice: "))
+        entrada = input("Índice: ")
+        print("Entrada recibida:", repr(entrada))  # `repr()` te muestra exactamente lo que se recibe
+        indice = int(entrada)  # Aquí sabrás si el error viene por un valor inesperado.
+        print("indice ingresado: {}".format(indice))
         try:
             self.backend.eliminar_fila(indice)  # Llamada al método del backend
             print("Fila eliminada.")
@@ -458,7 +515,4 @@ class ConsolaDBFrontend:
         print(tabla)
 
 if __name__ == "__main__":
-    conexion = base_ddatos()
-    backend = ConsolaDBBackend(conexion, "public", "produccion_c")
-    frontend = ConsolaDBFrontend(backend)
-    frontend.menu_principal()
+    frontend = ConsolaDBFrontend()

@@ -1,6 +1,6 @@
 from PyQt5 import QtWidgets, QtGui, QtCore
 from controllers.pruebabackend import ConsolaDBBackend
-from qtdesign import Ui_Form  # Importa tu diseño de tabla
+from views.qtdesign import Ui_Form  # Importa tu diseño de tabla
 
 class HomePage(QtWidgets.QWidget):
     def __init__(self, usuario, conexion, open_table_tab, parent=None):
