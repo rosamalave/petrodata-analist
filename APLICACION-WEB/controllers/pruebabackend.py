@@ -309,8 +309,6 @@ class ConsolaDBBackend:
 class ConsolaDBFrontend:
     def __init__(self):
         self.backend = None  # Se inicializa como None hasta que se complete el inicio de sesión
-        self.iniciar_sesion()
-        self.menu_principal()
 
     def iniciar_sesion(self):
         print("--- Inicio de sesión ---")
@@ -516,3 +514,5 @@ class ConsolaDBFrontend:
 
 if __name__ == "__main__":
     frontend = ConsolaDBFrontend()
+    frontend.iniciar_sesion()
+    frontend.menu_principal()
