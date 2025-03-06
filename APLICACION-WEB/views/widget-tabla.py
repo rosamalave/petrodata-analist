@@ -3,6 +3,7 @@ from tkinter import ttk
 from tkinter import messagebox
 from PIL import Image, ImageTk  
 from controllers.pruebabackend import ConsolaDBFrontend
+import traceback
 import os
 
 #falta que conectar las funciones de editar, eliminar e insertar para que aplique a la bd
@@ -18,7 +19,7 @@ def iniciar_sesion_y_mostrar_tabla():
         return
 
     print("Datos cargados, creando ventana...")
-    root = EditableTable(app.backend)
+    root = EditableTable(app)
     root.mainloop()
 
 def cargar_imagen(nombre_imagen, tamanio=(20, 20)):
@@ -29,13 +30,14 @@ def cargar_imagen(nombre_imagen, tamanio=(20, 20)):
     return ImageTk.PhotoImage(imagen)
 
 class EditableTable(tk.Tk):
-    def __init__(self, backend):
+    def __init__(self, app):
         super().__init__()
 
         self.title("Gestión de Datos")
         self.geometry("900x500")
 
-        self.backend = backend
+        self.backend = app.backend
+        self.frontend = app
         main_frame = tk.Frame(self)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
@@ -55,6 +57,9 @@ class EditableTable(tk.Tk):
 
         self.btn_undo_filter = tk.Button(self.sidebar, text="Deshacer Filtro", command=self.undo_filter, state=tk.DISABLED)
         self.btn_undo_filter.pack(pady=10)
+
+        self.btn_undo = tk.Button(self.sidebar, text="Deshacer Cambio", command=self.deshacer_ultimo_cambio, state=tk.DISABLED)
+        self.btn_undo.pack(pady=10)
 
         table_frame = tk.Frame(main_frame)
         table_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
@@ -84,6 +89,7 @@ class EditableTable(tk.Tk):
 
         # Evento de redimensionar la ventana
         self.bind("<Configure>", self.on_resize)
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
 
     def create_filter_widgets(self):
         """Crea los widgets de filtrado en el sidebar"""
@@ -119,22 +125,19 @@ class EditableTable(tk.Tk):
         self.is_filter_applied = False  # Marcamos que el filtro no está activo
         self.btn_undo_filter.config(state=tk.DISABLED)  # Deshabilitamos el botón de deshacer filtro
 
-    def load_data(self, data=None):
-        """Carga los datos en la tabla"""
-        for item in self.tree.get_children():
-            self.tree.delete(item)
-
-        data = data if data else self.backend.datos
+    def load_data(self, data):
+        """Carga los datos en la tabla sin modificar self.backend.datos."""
+        self.tree.delete(*self.tree.get_children())  # Limpiar la tabla antes de cargar datos
 
         for row in data:
-            self.tree.insert("", tk.END, values=row + [""],)  
-
-        self.tree.pack(fill=tk.BOTH, expand=True)
+            row_with_actions = row + [""]  # Agregar espacio vacío para "Acciones"
+            self.tree.insert("", tk.END, values=row_with_actions)
 
     def add_empty_row(self):
-        """Agrega una fila vacía"""
-        new_id = len(self.tree.get_children()) + 1
-        self.tree.insert("", tk.END, values=(new_id, "", "", "", "", ""))  
+        """Agrega una fila vacía""" 
+        self.backend.agregar_fila()
+        print("\nFila vacía agregada.")
+        self.load_data(self.backend.datos)
 
     def delete_row(self):
         """Elimina la fila seleccionada de la base de datos y actualiza la tabla."""
@@ -158,13 +161,12 @@ class EditableTable(tk.Tk):
         try:
             self.backend.eliminar_fila(row_index)
             del self.backend.datos[row_index]  # Eliminar de la lista en memoria
-            self.load_data()  # Recargar la tabla
+            self.load_data(self.backend.datos)  # Recargar la tabla
             messagebox.showinfo("Éxito", "Fila eliminada correctamente.")
         except Exception as e:
             messagebox.showerror("Error", "No se pudo eliminar la fila: {}".format(e))
 
         self.clear_entries()
-        self.current_item = None
         self.btn_delete_row.config(state=tk.DISABLED)
 
     def enable_editing(self, event):
@@ -233,11 +235,77 @@ class EditableTable(tk.Tk):
         self.btn_cancel.place(x=x + 30, y=y, width=20, height=20)
 
     def save_changes(self):
-        """Guarda los cambios editados en la fila"""
-        new_values = [self.entry_vars[i].get() for i in range(len(self.headers)-1)]
+        """Guarda los cambios realizados en la fila seleccionada."""
+        if not self.current_item or not self.tree.exists(self.current_item):
+            messagebox.showwarning("Advertencia", "No se ha seleccionado ninguna fila válida.")
+            return
 
-        self.tree.item(self.current_item, values=new_values + [""])
-        self.clear_entries()
+        try:
+            row_index = self.tree.index(self.current_item)
+            print("DEBUG: Índice de fila en la lista de datos: {} (tipo: {})".format(row_index, type(row_index)))
+
+            if not (0 <= row_index < len(self.backend.datos)):
+                messagebox.showerror("Error", "El índice está fuera del rango de datos.")
+                return
+        except Exception as e:
+            print("ERROR: Al obtener el índice de la fila. Detalles: {}".format(str(e)))
+            messagebox.showerror("Error", "No se pudo obtener el índice de la fila. Revisa la consola para más detalles.")
+            return
+
+        try:
+            cambios = {}
+            fila_actual = []
+
+            # Excluir la columna "Acciones" obteniendo solo las columnas de la base de datos
+            num_columnas_validas = len(self.backend.headers)
+
+            for i in range(num_columnas_validas):  # Solo recorremos columnas válidas
+                if i not in self.entry_vars:
+                    print("WARNING: La clave '{}' no está en entry_vars.".format(i))
+                    continue
+
+                try:
+                    nuevo_valor = self.entry_vars[i].get()
+                    fila_actual.append(nuevo_valor)
+                    cambios[i] = nuevo_valor
+                except Exception as e:
+                    print("ERROR: Al obtener el valor de la entrada para la columna {}. Detalles: {}".format(i, str(e)))
+
+            print("DEBUG: Cambios a guardar: {}".format(cambios))
+
+            if not cambios:
+                print("WARNING: No se han realizado cambios.")
+                return
+        except Exception as e:
+            print("ERROR: Al procesar los cambios. Detalles: {}".format(str(e)))
+            messagebox.showerror("Error", "No se pudieron procesar los cambios. Revisa la consola para más detalles.")
+            return
+
+        # Guardar cambios y habilitar botón de deshacer
+        try:
+            if row_index < len(self.backend.datos):
+                print("DEBUG: Datos actuales en backend: {}".format(self.backend.datos[row_index]))
+
+                if row_index not in self.backend.nuevas_filas_indices:
+                    self.backend.agregar_datos(self.backend.editar_fila, row_index, cambios)
+                else:
+                    self.backend.agregar_datos(self.backend.insertar_fila, row_index, cambios)
+                    self.backend.nuevas_filas_indices.remove(row_index)
+
+                new_values = [self.entry_vars[i].get() for i in range(len(self.headers)-1)]
+                print("DEBUG: Nuevos valores a guardar en el Treeview: {}".format(new_values))
+
+                self.tree.item(self.current_item, values=new_values + [""])
+                self.clear_entries()
+                self.load_data(self.backend.datos)  # Recargar datos sin "Acciones"
+                
+                # Habilitar el botón de deshacer
+                self.btn_undo.config(state=tk.NORMAL)
+                
+        except Exception as e:
+            print("ERROR: Al guardar los cambios. Detalles: {}".format(str(e)))
+            messagebox.showerror("Error", "No se pudieron guardar los cambios. Revisa la consola para más detalles.")
+
 
     def cancel_edit(self):
         """Cancela la edición y restaura los valores originales"""
@@ -262,6 +330,30 @@ class EditableTable(tk.Tk):
             self.btn_cancel = None
 
         self.btn_delete_row.config(state=tk.DISABLED)
+    def deshacer_ultimo_cambio(self):
+        """Deshace el último cambio realizado en los datos."""
+        try:
+            deshecho = self.backend.deshacer_ultimo_cambio()
+            
+            if deshecho == 0:
+                print("Error: No se pudo realizar el cambio de deshacer.")
+                self.reiniciar_interfaz()
+            elif deshecho == 1:
+                print("Cambio deshecho exitosamente.")
+                self.load_data(self.backend.datos)
+            elif deshecho == 3:
+                print("Deshacer finalizado.")
+                self.btn_undo.config(state=tk.DISABLED)
+                self.load_data(self.backend.datos)
+        except Exception as e:
+            print("Error al deshacer el cambio: {}".format(str(e)))
+            messagebox.showerror("Error", "No se pudo deshacer el cambio. Revisa la consola para más detalles.")
+            
+    def reiniciar_interfaz(self):
+        """Reinicia la interfaz en caso de error."""
+        self.clear_entries()
+        self.load_data(self.backend.datos)
+        self.btn_undo.config(state=tk.DISABLED)
 
     def on_resize(self, event):
         """Reajusta la posición de los botones y los Entry cuando la ventana cambia de tamaño"""
@@ -285,6 +377,15 @@ class EditableTable(tk.Tk):
                 x, y, width, height = self.tree.bbox(self.current_item, column=i)
                 if width > 0:
                     entry.place(x=x, y=y, width=width, height=height)
+
+    def on_close(self):
+        """Método que se ejecuta cuando la ventana está a punto de cerrarse"""
+        respuesta = messagebox.askyesno("Confirmar", "¿Está seguro de que desea cerrar la aplicación?")
+        if respuesta:
+            self.frontend.cerrar_sesion()
+            self.destroy()  # Cierra la ventana si el usuario confirma
+        else:
+            print("Cierre cancelado.")  # El cierre se cancela si el usuario no confirma
 
 if __name__ == "__main__":
     iniciar_sesion_y_mostrar_tabla()

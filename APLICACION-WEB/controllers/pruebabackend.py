@@ -50,7 +50,7 @@ class ConsolaDBBackend:
                 print("Error al cargar datos: {}".format(e))
 
     def deshacer_ultimo_cambio(self):
-        # 0: falso, 1: verdadero, 2: ocultar (1 verdadero + 1 ocultar)
+        # 0: falso, 1: verdadero, 3: ocultar (1 verdadero + 2 ocultar)
         bandera = 0
 
         try:
@@ -58,23 +58,23 @@ class ConsolaDBBackend:
             query = """
                 SELECT *
                 FROM public2.historial_modificaciones
-                WHERE usuario = {}
-                AND tabla_afectada = {}
+                WHERE usuario = %s
+                AND tabla_afectada = %s
                 AND estado = 'vigente'  -- Condición añadida
                 AND accion NOT IN ('Inicio de sesion', 'Cierre de sesion')
                 AND fecha >= (
                     SELECT MAX(fecha)
                     FROM public2.historial_modificaciones
-                    WHERE usuario = {} AND accion = 'Inicio de sesion'
+                    WHERE usuario = %s AND accion = 'Inicio de sesion'
                 )
                 ORDER BY fecha DESC
                 LIMIT 2;
-            """.format(self.usuario, self.tabla, self.usuario)
+            """
 
             cursor = self.conexion.conn.cursor()
-            cursor.execute(query)
+            cursor.execute(query, (self.usuario, self.tabla, self.usuario))
             cambios = cursor.fetchall()
-            cursor.close()  # Cerrar el cursor después de obtener los resultados
+            
 
             # Si no hay cambios registrados, salir de la función
             if not cambios:
@@ -82,11 +82,11 @@ class ConsolaDBBackend:
                 return bandera
             
             # Si hay un solo cambio registrado, marcar como "oculto"
-            if len(cambios) == 1:
+            if cursor.rowcount == 1:
                 bandera = 2
             
             ultimo_cambio = cambios[0]
-
+            cursor.close()  # Cerrar el cursor después de obtener los resultados
             print("Cantidad de filas obtenidas: {}".format(len(cambios)))
             print("Datos obtenidos: {}".format(cambios))
             print("Último cambio: {}".format(ultimo_cambio))
@@ -105,7 +105,7 @@ class ConsolaDBBackend:
             cursor.close()
 
             # Convertir el detalle JSONB a un diccionario
-            detalle = detalle_json
+            detalle = json.loads(detalle_json)
 
             # Obtener el ID de la fila afectada desde el detalle
             id_fila_afectada = detalle.get("id_{}".format(self.tabla))
