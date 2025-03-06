@@ -137,10 +137,35 @@ class EditableTable(tk.Tk):
         self.tree.insert("", tk.END, values=(new_id, "", "", "", "", ""))  
 
     def delete_row(self):
-        """Elimina la fila seleccionada"""
-        if self.current_item:
-            self.tree.delete(self.current_item)
-            self.clear_entries()
+        """Elimina la fila seleccionada de la base de datos y actualiza la tabla."""
+        if not self.current_item:
+            return
+
+        # Obtener la posición de la fila seleccionada en la lista de datos
+        row_index = self.tree.index(self.current_item)
+
+        # Verificar que el índice es válido
+        if row_index < 0 or row_index >= len(self.backend.datos):
+            messagebox.showerror("Error", "No se pudo identificar la fila en la base de datos.")
+            return
+
+        # Confirmar la eliminación
+        confirmar = messagebox.askyesno("Eliminar fila", "¿Está seguro de que desea eliminar esta fila?")
+        if not confirmar:
+            return
+
+        # Intentar eliminar la fila de la base de datos
+        try:
+            self.backend.eliminar_fila(row_index)
+            del self.backend.datos[row_index]  # Eliminar de la lista en memoria
+            self.load_data()  # Recargar la tabla
+            messagebox.showinfo("Éxito", "Fila eliminada correctamente.")
+        except Exception as e:
+            messagebox.showerror("Error", "No se pudo eliminar la fila: {}".format(e))
+
+        self.clear_entries()
+        self.current_item = None
+        self.btn_delete_row.config(state=tk.DISABLED)
 
     def enable_editing(self, event):
         """Habilita la edición de una fila completa al hacer doble clic"""
