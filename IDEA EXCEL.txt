@@ -1,0 +1,2 @@
+IDEA EXCEL:
+con tkinter table hacer que lea el excel y que mediante un form vaya preguntando, seleccione la fila (si esta vertical) o columna (si esta horizontal) que contenga el header1, luego que contenga el header 2 y asi sucesivamente hasta completar la tabla 

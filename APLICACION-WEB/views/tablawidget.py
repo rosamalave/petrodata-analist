@@ -5,77 +5,65 @@ from PIL import Image, ImageTk
 from controllers.pruebabackend import ConsolaDBFrontend
 import traceback
 import os
+import controllers.config
 
-#falta que conectar las funciones de editar, eliminar e insertar para que aplique a la bd
+#quitar cierre de sesion con frontend 
+#quitar iniciar sesion 
 
-def iniciar_sesion_y_mostrar_tabla():
-    """Inicia sesión en la BD, obtiene los datos y luego crea la ventana con la tabla."""
-    print("Iniciando sesión en la BD...")
-    app = ConsolaDBFrontend()
-    app.iniciar_sesion()  
+class EditableTable(tk.Frame):
+    def __init__(self, layout, backend):
+        super().__init__(layout.notebook)
+        self.mainlayout = layout
+        self.backend = backend
 
-    if not app.backend.datos:
-        print("Error: No se cargaron datos desde la BD.")
-        return
-
-    print("Datos cargados, creando ventana...")
-    root = EditableTable(app)
-    root.mainloop()
-
-def cargar_imagen(nombre_imagen, tamanio=(20, 20)):
-    base_dir = os.path.dirname(os.path.abspath(__file__))  
-    parent_dir = os.path.dirname(base_dir)  
-    imagen_path = os.path.join(parent_dir, 'resources', 'images', nombre_imagen)
-    imagen = Image.open(imagen_path).resize(tamanio, Image.ANTIALIAS)
-    return ImageTk.PhotoImage(imagen)
-
-class EditableTable(tk.Tk):
-    def __init__(self, app):
-        super().__init__()
-
-        self.title("Gestión de Datos")
-        self.geometry("900x500")
-
-        self.backend = app.backend
-        self.frontend = app
         main_frame = tk.Frame(self)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        self.sidebar = tk.Frame(main_frame, width=200, bg="lightgray")
-        self.sidebar.pack(side=tk.LEFT, fill=tk.Y)
+        # 🟢 Sidebar ahora está en la parte INFERIOR con disposición HORIZONTAL
+        self.sidebar = tk.Frame(main_frame, height=50, bg="white")
+        self.sidebar.pack(side=tk.BOTTOM, fill=tk.X)  # Se expande horizontalmente
 
         self.headers = self.backend.headers + ["Acciones"]  
         print("Headers cargados:", self.headers)
 
         self.create_filter_widgets()
 
+        # 🟢 Botones alineados horizontalmente
         self.btn_add_row = tk.Button(self.sidebar, text="Agregar Fila", command=self.add_empty_row)
-        self.btn_add_row.pack(pady=10)
+        self.btn_add_row.pack(side=tk.LEFT, padx=5, pady=10)
 
         self.btn_delete_row = tk.Button(self.sidebar, text="Eliminar Fila", command=self.delete_row, state=tk.DISABLED)
-        self.btn_delete_row.pack(pady=10)
+        self.btn_delete_row.pack(side=tk.LEFT, padx=5, pady=10)
 
         self.btn_undo_filter = tk.Button(self.sidebar, text="Deshacer Filtro", command=self.undo_filter, state=tk.DISABLED)
-        self.btn_undo_filter.pack(pady=10)
+        self.btn_undo_filter.pack(side=tk.LEFT, padx=5, pady=10)
 
         self.btn_undo = tk.Button(self.sidebar, text="Deshacer Cambio", command=self.deshacer_ultimo_cambio, state=tk.DISABLED)
-        self.btn_undo.pack(pady=10)
+        self.btn_undo.pack(side=tk.LEFT, padx=5, pady=10)
 
+        close_button = tk.Button(self.sidebar, text="Cerrar", command=self.close_tab)
+        close_button.pack(side=tk.LEFT, padx=5, pady=10)
+
+        # 🟢 Tabla en la parte superior
         table_frame = tk.Frame(main_frame)
-        table_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+        table_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
         self.tree = ttk.Treeview(table_frame, columns=self.headers, show="headings")
 
+        style = ttk.Style()
+        style.configure("Treeview", background="white",  foreground="black", fieldbackground="white")  # Color de fondo
+        style.configure("Treeview.Heading", background="white", font=('Poppins', 10))
+
         for col in self.headers:
             self.tree.heading(col, text=col)
-            self.tree.column(col, width=150, anchor="center")  
+            self.tree.column(col, width=150, anchor="center", stretch=True)  
 
         self.tree.pack(fill=tk.BOTH, expand=True)
         self.tree.bind("<Double-1>", self.enable_editing)
 
-        self.check_icon = cargar_imagen('check2.ico', (20, 20))  
-        self.cancel_icon = cargar_imagen('cancel2.ico', (20, 20))  
-
+        self.check_icon = controllers.config.cargar_imagen('check2.ico', (20, 20))  
+        self.cancel_icon = controllers.config.cargar_imagen('cancel2.ico', (20, 20))  
+            
         self.load_data(self.backend.datos)
 
         self.entry_vars = {}  
@@ -86,31 +74,15 @@ class EditableTable(tk.Tk):
         self.btn_cancel = None
 
         self.is_filter_applied = False  # Variable que indica si un filtro está activo
-
-        # Evento de redimensionar la ventana
+            # Evento de redimensionar la ventana
         self.bind("<Configure>", self.on_resize)
-        self.protocol("WM_DELETE_WINDOW", self.on_close)
 
     def create_filter_widgets(self):
-        """Crea los widgets de filtrado en el sidebar"""
-        self.filtro_valores_frame = tk.Frame(self.sidebar, bg="lightgray")
-        self.filtro_valores_frame.pack(pady=15)
+        return
 
-        tk.Label(self.filtro_valores_frame, text="Filtrar por valores", bg="lightgray").pack(pady=5)
-        self.columnafiltrar = ttk.Combobox(self.filtro_valores_frame, values=self.headers[:-1], state="readonly")
-        self.columnafiltrar.pack(pady=5)
-
-        self.valor_min = tk.Spinbox(self.filtro_valores_frame, from_=0, to=20000)
-        self.valor_min.pack(pady=5)
-        self.valor_max = tk.Spinbox(self.filtro_valores_frame, from_=0, to=20000)
-        self.valor_max.pack(pady=5)
-
-        self.filtrar_valores_button = tk.Button(self.filtro_valores_frame, text="Filtrar", command=self.filtro_por_valores)
-        self.filtrar_valores_button.pack(pady=5)
-
-    def filtro_por_valores(self):
+    def filtro_por_valores(self, columna, min_val, max_val):
         """Filtra los datos según la columna y el rango de valores"""
-        datos_filtrados = self.backend.filtrar_por_valores(self.columnafiltrar.get(), self.valor_min.get(), self.valor_max.get())
+        datos_filtrados = self.backend.filtrar_por_valores(columna, min_val, max_val)
         
         if datos_filtrados:
             self.load_data(datos_filtrados)
@@ -378,14 +350,7 @@ class EditableTable(tk.Tk):
                 if width > 0:
                     entry.place(x=x, y=y, width=width, height=height)
 
-    def on_close(self):
-        """Método que se ejecuta cuando la ventana está a punto de cerrarse"""
-        respuesta = messagebox.askyesno("Confirmar", "¿Está seguro de que desea cerrar la aplicación?")
-        if respuesta:
-            self.frontend.cerrar_sesion()
-            self.destroy()  # Cierra la ventana si el usuario confirma
-        else:
-            print("Cierre cancelado.")  # El cierre se cancela si el usuario no confirma
-
-if __name__ == "__main__":
-    iniciar_sesion_y_mostrar_tabla()
+    def close_tab(self):
+        """Pide al MainLayout que cierre la pestaña de esta tabla."""
+        index = self.mainlayout.notebook.index(self)
+        self.mainlayout.close_tab(index)

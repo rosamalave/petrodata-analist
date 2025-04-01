@@ -1,70 +1,42 @@
-import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QMessageBox
-from views.vistalogin import vistalogin
-from views.homepage import HomePage
-
-class MainWindow(QMainWindow):
-    
+import tkinter as tk
+from tkinter import ttk, Entry, Button, Label, PhotoImage, messagebox
+from views.login import LoginView
+from views.layout import MainLayout
+# =================== Clase Principal MainApp ===================
+#error es que no se ha cambiado la referencia del combobox con la de mainlayout
+class MainApp(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Mi Aplicación")
-        self.setFixedSize(1366, 768)
+        self.title("Aplicación Principal")
+        self.geometry("862x519")
+        self.start_login()
+        self.protocol("WM_DELETE_WINDOW", self.on_cerrar_ventana)
 
-        # Crear un QTabWidget para manejar las pestañas
-        self.tab_widget = QTabWidget(self)
-        self.setCentralWidget(self.tab_widget)
+    def start_login(self):
+        """ Inicia la pantalla de login """
+        self.login_view = LoginView(self, self.on_login_success)
 
-        # Inicializa la vista de inicio de sesión
-        self.login_view = vistalogin(self.show_home_page)
-        self.tab_widget.addTab(self.login_view, "Inicio de Sesión")
+    def on_login_success(self, usuario,conexion):
+        """ Método llamado tras el login exitoso """
+        for widget in self.winfo_children():
+            widget.destroy()  # Elimina la vista de login
+        self.init_main_layout(usuario,conexion)
 
-        # Diccionario para controlar pestañas abiertas
-        self.open_tabs = {}
+    def init_main_layout(self,usuario,conexion):
+        self.mainlayout=MainLayout(self,usuario,conexion)
+        # Configuramos el protocolo de cierre para ejecutar un método personalizado
+        
+    def on_cerrar_ventana(self):
+        # Aquí pones el código que deseas ejecutar cuando se cierre la ventana
+        respuesta = messagebox.askyesno("Confirmar", "¿Seguro que deseas salir?")
+        if respuesta:  # Si el usuario hace clic en "Sí"
+            self.login_view.cerrarsesion()
+            print("Ventana cerrada")
+            self.destroy()  # Cierra la ventana
+        else:
+            print("Cancelado el cierre de la ventana")
 
-    def show_home_page(self, usuario, conexion):
-        # Crear HomePage
-        self.home_page = HomePage(usuario, conexion, self.open_table_tab)
-        self.tab_widget.addTab(self.home_page, "Home Page")
-        self.tab_widget.setCurrentWidget(self.home_page)
-
-        # Eliminar la pestaña de inicio de sesión
-        self.tab_widget.removeTab(0)
-
-    def open_table_tab(self, esquema, tabla):
-        tab_name = "{}.{}".format(esquema,tabla)
-
-        # Verificar si ya está abierta
-        if tab_name in self.open_tabs:
-            index = self.open_tabs[tab_name]
-            self.tab_widget.setCurrentIndex(index)
-            return
-
-        # Crear nueva pestaña
-        try:
-            table_view = self.home_page.create_table_view(esquema, tabla)
-            index = self.tab_widget.addTab(table_view, tab_name)
-            self.tab_widget.setCurrentWidget(table_view)
-            self.open_tabs[tab_name] = index
-        except Exception as e:
-            QMessageBox.critical(self, "Error: No se pudo abrir la tabla: {{}}".format(str,e))
-
-    def closeEvent(self, event):
-        # Asegurarse de que el cierre de sesión sea seguro
-        if self.tab_widget.count() > 1:
-            reply = QMessageBox.question(
-                self,
-                "Cerrar aplicación",
-                "¿Está seguro de cerrar la aplicación? Esto cerrará todas las pestañas.",
-                QMessageBox.Yes | QMessageBox.No,
-            )
-            if reply == QMessageBox.No:
-                event.ignore()
-                return
-        self.login_view.cerrarsesion()
-        event.accept()
-
+# =================== Lanzar la App ===================
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    main_window = MainWindow()
-    main_window.show()
-    sys.exit(app.exec_())
+    app = MainApp()
+    app.mainloop()
